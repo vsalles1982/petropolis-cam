@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Administração — Petrópolis Cam</title>
+
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    >
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --fundo: #0b1118;
+            --painel: #0f1822;
+            --cartao: #172432;
+            --borda: #2b3d4c;
+            --texto: #e7eef5;
+            --fraco: #91a5b7;
+            --azul: #1598eb;
+            --verde: #67e59a;
+            --vermelho: #ff6b75;
+        }
+
+        body {
+            margin: 0;
+            background: var(--fundo);
+            color: var(--texto);
+            font-family: Arial, sans-serif;
+        }
+
+        header {
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 13px 22px;
+            background: #111b26;
+            border-bottom: 1px solid var(--borda);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 21px;
+        }
+
+        header p {
+            margin: 5px 0 0;
+            color: var(--fraco);
+            font-size: 13px;
+        }
+
+        .voltar {
+            padding: 9px 13px;
+            color: white;
+            background: #1c3447;
+            border: 1px solid #31536c;
+            border-radius: 8px;
+            text-decoration: none;
+        }
+
+        main {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            min-height: calc(100vh - 70px);
+        }
+
+        aside {
+            display: flex;
+            min-height: 0;
+            max-height: calc(100vh - 70px);
+            flex-direction: column;
+            background: var(--painel);
+            border-right: 1px solid var(--borda);
+        }
+
+        .busca-area {
+            padding: 15px;
+            border-bottom: 1px solid var(--borda);
+        }
+
+        .busca-area input {
+            width: 100%;
+            padding: 11px 12px;
+            color: var(--texto);
+            background: var(--cartao);
+            border: 1px solid var(--borda);
+            border-radius: 8px;
+            outline: none;
+        }
+
+        .busca-area input:focus {
+            border-color: var(--azul);
+        }
+
+        .contador {
+            margin-top: 9px;
+            color: var(--fraco);
+            font-size: 12px;
+        }
+
+        #lista {
+            min-height: 0;
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+        }
+
+        .camera {
+            margin-bottom: 9px;
+            padding: 12px;
+            background: var(--cartao);
+            border: 1px solid var(--borda);
+            border-radius: 9px;
+            cursor: pointer;
+        }
+
+        .camera:hover,
+        .camera.selecionada {
+            border-color: var(--azul);
+        }
+
+        .camera.selecionada {
+            background: #183047;
+        }
+
+        .camera h3 {
+            margin: 0 0 6px;
+            font-size: 14px;
+        }
+
+        .camera p {
+            margin: 3px 0;
+            color: var(--fraco);
+            font-size: 12px;
+        }
+
+        .camera-status {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 9px;
+            margin-top: 7px;
+        }
+
+        .id {
+            color: #6f8799;
+            font-size: 11px;
+        }
+
+        .online {
+            color: var(--verde);
+        }
+
+        .offline {
+            color: var(--vermelho);
+        }
+
+        .editor {
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .estado-vazio {
+            display: grid;
+            min-height: 500px;
+            place-items: center;
+            color: var(--fraco);
+            text-align: center;
+        }
+
+        #conteudo-editor {
+            display: none;
+        }
+
+        .editor-topo {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 17px;
+        }
+
+        .editor-topo h2 {
+            margin: 0;
+            font-size: 19px;
+        }
+
+        .acoes {
+            display: flex;
+            gap: 8px;
+        }
+
+        button,
+        .link-botao {
+            padding: 9px 12px;
+            color: white;
+            background: #087fd1;
+            border: 0;
+            border-radius: 7px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        button:hover,
+        .link-botao:hover {
+            filter: brightness(1.12);
+        }
+
+        .excluir {
+            background: #a62c38;
+        }
+
+        .secundario {
+            background: #314656;
+        }
+
+        form {
+            display: grid;
+            gap: 13px;
+        }
+
+        .linha {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #aabac8;
+            font-size: 12px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 10px 11px;
+            color: var(--texto);
+            background: var(--cartao);
+            border: 1px solid var(--borda);
+            border-radius: 8px;
+            outline: none;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: var(--azul);
+        }
+
+        .checkboxes {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .checkbox {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 11px;
+            background: #131f2a;
+            border: 1px solid var(--borda);
+            border-radius: 8px;
+        }
+
+        .checkbox input {
+            width: auto;
+            margin-top: 2px;
+        }
+
+        .checkbox label {
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        #mapa-editor {
+            height: 300px;
+            margin-top: 4px;
+            border: 1px solid var(--borda);
+            border-radius: 9px;
+        }
+
+        .mapa-ajuda {
+            margin: 6px 0 0;
+            color: var(--fraco);
+            font-size: 11px;
+        }
+
+        #mensagem {
+            display: none;
+            padding: 11px;
+            border-radius: 8px;
+        }
+
+        .mensagem-sucesso {
+            display: block !important;
+            color: #8ff0b8;
+            background: #123524;
+            border: 1px solid #286f49;
+        }
+
+        .mensagem-erro {
+            display: block !important;
+            color: #ffabb2;
+            background: #3a171b;
+            border: 1px solid #753039;
+        }
+
+        .rodape-formulario {
+            display: flex;
+            justify-content: flex-end;
+            gap: 9px;
+            padding-top: 5px;
+        }
+
+        @media (max-width: 900px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+
+            aside {
+                max-height: 430px;
+                border-right: 0;
+                border-bottom: 1px solid var(--borda);
+            }
+
+            .linha,
+            .checkboxes {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<header>
+    <div>
+        <h1>⚙️ Administração</h1>
+
+        <p>
+            Editar, revisar e excluir câmeras cadastradas
+        </p>
+    </div>
+
+    <a class="voltar" href="/">
+        ← Voltar ao painel
+    </a>
+</header>
+
+<main>
+    <aside>
+        <div class="busca-area">
+            <input
+                id="busca"
+                type="search"
+                placeholder="Buscar câmera, cidade ou fonte..."
+                autocomplete="off"
+            >
+
+            <div class="contador" id="contador">
+                Carregando câmeras...
+            </div>
+        </div>
+
+        <div id="lista"></div>
+    </aside>
+
+    <section class="editor">
+        <div
+            class="estado-vazio"
+            id="estado-vazio"
+        >
+            Selecione uma câmera na lista para editar.
+        </div>
+
+        <div id="conteudo-editor">
+            <div class="editor-topo">
+                <h2 id="titulo-editor">
+                    Editar câmera
+                </h2>
+
+                <div class="acoes">
+                    <a
+                        class="link-botao secundario"
+                        id="assistir"
+                        href="#"
+                        target="_blank"
+                    >
+                        Testar player
+                    </a>
+
+                    <button
+                        class="excluir"
+                        id="excluir"
+                        type="button"
+                    >
+                        Excluir
+                    </button>
+                </div>
+            </div>
+
+            <form id="formulario">
+                <div class="linha">
+                    <div>
+                        <label for="nome">
+                            Nome
+                        </label>
+
+                        <input
+                            id="nome"
+                            required
+                        >
+                    </div>
+
+                    <div>
+                        <label for="slug">
+                            Slug/caminho
+                        </label>
+
+                        <input
+                            id="slug"
+                            required
+                        >
+                    </div>
+                </div>
+
+                <div class="linha">
+                    <div>
+                        <label for="cidade">
+                            Cidade
+                        </label>
+
+                        <input
+                            id="cidade"
+                            required
+                        >
+                    </div>
+
+                    <div>
+                        <label for="bairro">
+                            Bairro
+                        </label>
+
+                        <input
+                            id="bairro"
+                            required
+                        >
+                    </div>
+                </div>
+
+                <div class="linha">
+                    <div>
+                        <label for="categoria">
+                            Categoria
+                        </label>
+
+                        <input
+                            id="categoria"
+                            required
+                        >
+                    </div>
+
+                    <div>
+                        <label for="fonte">
+                            Fonte/responsável
+                        </label>
+
+                        <input
+                            id="fonte"
+                            required
+                        >
+                    </div>
+                </div>
+
+                <div class="linha">
+                    <div>
+                        <label for="latitude">
+                            Latitude
+                        </label>
+
+                        <input
+                            id="latitude"
+                            type="number"
+                            step="any"
+                            required
+                        >
+                    </div>
+
+                    <div>
+                        <label for="longitude">
+                            Longitude
+                        </label>
+
+                        <input
+                            id="longitude"
+                            type="number"
+                            step="any"
+                            required
+                        >
+                    </div>
+                </div>
+
+                <div>
+                    <label for="pagina_oficial">
+                        Página oficial
+                    </label>
+
+                    <input
+                        id="pagina_oficial"
+                        type="url"
+                        placeholder="https://..."
+                    >
+                </div>
+
+                <div>
+                    <label for="stream_url">
+                        URL da transmissão
+                    </label>
+
+                    <input
+                        id="stream_url"
+                        type="url"
+                        placeholder="https://..."
+                    >
+                </div>
+
+                <div>
+                    <label for="tipo_stream">
+                        Tipo de transmissão
+                    </label>
+
+                    <select id="tipo_stream">
+                        <option value="pagina_oficial">
+                            Página oficial externa
+                        </option>
+
+                        <option value="iframe">
+                            Player incorporado
+                        </option>
+
+                        <option value="webrtc">
+                            WebRTC
+                        </option>
+
+                        <option value="hls">
+                            HLS
+                        </option>
+
+                        <option value="rtsp">
+                            RTSP
+                        </option>
+
+                        <option value="imagem">
+                            Imagem atualizada
+                        </option>
+                    </select>
+                </div>
+
+                <div class="checkboxes">
+                    <div class="checkbox">
+                        <input
+                            id="autorizada"
+                            type="checkbox"
+                        >
+
+                        <label for="autorizada">
+                            Fonte pública ou autorizada
+                        </label>
+                    </div>
+
+                    <div class="checkbox">
+                        <input
+                            id="pode_retransmitir"
+                            type="checkbox"
+                        >
+
+                        <label for="pode_retransmitir">
+                            Pode retransmitir pelo MediaMTX
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label>
+                        Corrigir posição no mapa
+                    </label>
+
+                    <div id="mapa-editor"></div>
+
+                    <p class="mapa-ajuda">
+                        Clique no mapa ou arraste o marcador.
+                    </p>
+                </div>
+
+                <div id="mensagem"></div>
+
+                <div class="rodape-formulario">
+                    <button
+                        class="secundario"
+                        id="recarregar"
+                        type="button"
+                    >
+                        Desfazer alterações
+                    </button>
+
+                    <button
+                        id="salvar"
+                        type="submit"
+                    >
+                        Salvar alterações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </section>
+</main>
+
+<script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+></script>
+
+<script>
+    let cameras = [];
+    let cameraSelecionada = null;
+    let mapaEditor = null;
+    let marcadorEditor = null;
+
+    const campos = [
+        "nome",
+        "slug",
+        "cidade",
+        "bairro",
+        "categoria",
+        "fonte",
+        "latitude",
+        "longitude",
+        "pagina_oficial",
+        "stream_url",
+        "tipo_stream"
+    ];
+
+    function normalizar(texto) {
+        return String(texto || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase();
+    }
+
+    function escapar(texto) {
+        const elemento =
+            document.createElement("div");
+
+        elemento.textContent =
+            String(texto || "");
+
+        return elemento.innerHTML;
+    }
+
+    function mostrarMensagem(texto, sucesso) {
+        const mensagem =
+            document.getElementById("mensagem");
+
+        mensagem.textContent = texto;
+
+        mensagem.className = sucesso
+            ? "mensagem-sucesso"
+            : "mensagem-erro";
+    }
+
+    function limparMensagem() {
+        const mensagem =
+            document.getElementById("mensagem");
+
+        mensagem.className = "";
+        mensagem.textContent = "";
+    }
+
+    function camerasFiltradas() {
+        const busca = normalizar(
+            document.getElementById(
+                "busca"
+            ).value
+        );
+
+        if (!busca) {
+            return cameras;
+        }
+
+        return cameras.filter(camera => {
+            const texto = normalizar(
+                [
+                    camera.nome,
+                    camera.cidade,
+                    camera.bairro,
+                    camera.fonte,
+                    camera.categoria,
+                    camera.slug
+                ].join(" ")
+            );
+
+            return texto.includes(busca);
+        });
+    }
+
+    function renderizarLista() {
+        const lista =
+            document.getElementById("lista");
+
+        const filtradas =
+            camerasFiltradas();
+
+        lista.innerHTML = "";
+
+        filtradas.forEach(camera => {
+            const item =
+                document.createElement("article");
+
+            const selecionada =
+                cameraSelecionada &&
+                cameraSelecionada.id === camera.id;
+
+            item.className =
+                "camera" +
+                (selecionada
+                    ? " selecionada"
+                    : "");
+
+            item.innerHTML = `
+                <h3>${escapar(camera.nome)}</h3>
+
+                <p>
+                    ${escapar(camera.bairro)} —
+                    ${escapar(camera.cidade)}
+                </p>
+
+                <p>
+                    ${escapar(camera.categoria)} ·
+                    ${escapar(camera.fonte)}
+                </p>
+
+                <div class="camera-status">
+                    <span class="${
+                        camera.online
+                            ? "online"
+                            : "offline"
+                    }">
+                        ● ${
+                            camera.online
+                                ? "Online"
+                                : "Offline/externa"
+                        }
+                    </span>
+
+                    <span class="id">
+                        ID ${camera.id}
+                    </span>
+                </div>
+            `;
+
+            item.onclick = () => {
+                selecionarCamera(camera.id);
+            };
+
+            lista.appendChild(item);
+        });
+
+        document.getElementById(
+            "contador"
+        ).textContent =
+            `${filtradas.length} de ${cameras.length} câmera(s)`;
+
+        if (filtradas.length === 0) {
+            lista.innerHTML = `
+                <div class="estado-vazio">
+                    Nenhuma câmera encontrada.
+                </div>
+            `;
+        }
+    }
+
+    function preencherFormulario(camera) {
+        campos.forEach(campo => {
+            const elemento =
+                document.getElementById(campo);
+
+            elemento.value =
+                camera[campo] ?? "";
+        });
+
+        document.getElementById(
+            "autorizada"
+        ).checked = camera.autorizada;
+
+        document.getElementById(
+            "pode_retransmitir"
+        ).checked =
+            camera.pode_retransmitir;
+
+        document.getElementById(
+            "titulo-editor"
+        ).textContent =
+            `Editar: ${camera.nome}`;
+
+        document.getElementById(
+            "assistir"
+        ).href =
+            `/assistir.html?id=${camera.id}`;
+
+        atualizarMapa(
+            camera.latitude,
+            camera.longitude
+        );
+
+        limparMensagem();
+    }
+
+    function criarMapaSeNecessario() {
+        if (mapaEditor) {
+            return;
+        }
+
+        mapaEditor = L.map(
+            "mapa-editor"
+        ).setView(
+            [-22.5112, -43.1779],
+            13
+        );
+
+        L.tileLayer(
+            "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+            {
+                maxZoom: 19,
+                attribution: "&copy; OpenStreetMap"
+            }
+        ).addTo(mapaEditor);
+
+        mapaEditor.on("click", evento => {
+            atualizarCoordenadas(
+                evento.latlng.lat,
+                evento.latlng.lng
+            );
+        });
+    }
+
+    function atualizarMapa(latitude, longitude) {
+        criarMapaSeNecessario();
+
+        const posicao = [
+            Number(latitude),
+            Number(longitude)
+        ];
+
+        mapaEditor.setView(
+            posicao,
+            15
+        );
+
+        if (!marcadorEditor) {
+            marcadorEditor = L.marker(
+                posicao,
+                {
+                    draggable: true
+                }
+            ).addTo(mapaEditor);
+
+            marcadorEditor.on(
+                "dragend",
+                () => {
+                    const posicao =
+                        marcadorEditor.getLatLng();
+
+                    atualizarCoordenadas(
+                        posicao.lat,
+                        posicao.lng
+                    );
+                }
+            );
+        } else {
+            marcadorEditor.setLatLng(
+                posicao
+            );
+        }
+
+        setTimeout(
+            () => mapaEditor.invalidateSize(),
+            100
+        );
+    }
+
+    function atualizarCoordenadas(
+        latitude,
+        longitude
+    ) {
+        document.getElementById(
+            "latitude"
+        ).value =
+            Number(latitude).toFixed(7);
+
+        document.getElementById(
+            "longitude"
+        ).value =
+            Number(longitude).toFixed(7);
+
+        marcadorEditor.setLatLng([
+            latitude,
+            longitude
+        ]);
+    }
+
+    function selecionarCamera(id) {
+        cameraSelecionada =
+            cameras.find(camera =>
+                camera.id === id
+            );
+
+        if (!cameraSelecionada) {
+            return;
+        }
+
+        document.getElementById(
+            "estado-vazio"
+        ).style.display = "none";
+
+        document.getElementById(
+            "conteudo-editor"
+        ).style.display = "block";
+
+        preencherFormulario(
+            cameraSelecionada
+        );
+
+        renderizarLista();
+    }
+
+    function obterDadosFormulario() {
+        return {
+            nome:
+                document.getElementById(
+                    "nome"
+                ).value.trim(),
+            slug:
+                document.getElementById(
+                    "slug"
+                ).value.trim(),
+            cidade:
+                document.getElementById(
+                    "cidade"
+                ).value.trim(),
+            bairro:
+                document.getElementById(
+                    "bairro"
+                ).value.trim(),
+            categoria:
+                document.getElementById(
+                    "categoria"
+                ).value.trim(),
+            fonte:
+                document.getElementById(
+                    "fonte"
+                ).value.trim(),
+            latitude: Number(
+                document.getElementById(
+                    "latitude"
+                ).value
+            ),
+            longitude: Number(
+                document.getElementById(
+                    "longitude"
+                ).value
+            ),
+            pagina_oficial:
+                document.getElementById(
+                    "pagina_oficial"
+                ).value.trim() || null,
+            stream_url:
+                document.getElementById(
+                    "stream_url"
+                ).value.trim() || null,
+            tipo_stream:
+                document.getElementById(
+                    "tipo_stream"
+                ).value,
+            autorizada:
+                document.getElementById(
+                    "autorizada"
+                ).checked,
+            pode_retransmitir:
+                document.getElementById(
+                    "pode_retransmitir"
+                ).checked
+        };
+    }
+
+    async function carregarCameras(
+        manterSelecao = true
+    ) {
+        try {
+            const resposta = await fetch(
+                "/api/cameras",
+                {
+                    cache: "no-store"
+                }
+            );
+
+            if (!resposta.ok) {
+                throw new Error(
+                    "Não foi possível carregar as câmeras"
+                );
+            }
+
+            cameras = await resposta.json();
+
+            renderizarLista();
+
+            if (
+                manterSelecao &&
+                cameraSelecionada
+            ) {
+                selecionarCamera(
+                    cameraSelecionada.id
+                );
+            }
+
+        } catch (erro) {
+            document.getElementById(
+                "contador"
+            ).textContent = erro.message;
+        }
+    }
+
+    document.getElementById(
+        "busca"
+    ).addEventListener(
+        "input",
+        renderizarLista
+    );
+
+    document.getElementById(
+        "recarregar"
+    ).addEventListener(
+        "click",
+        () => {
+            if (cameraSelecionada) {
+                preencherFormulario(
+                    cameraSelecionada
+                );
+            }
+        }
+    );
+
+    document.getElementById(
+        "formulario"
+    ).addEventListener(
+        "submit",
+        async evento => {
+            evento.preventDefault();
+
+            if (!cameraSelecionada) {
+                return;
+            }
+
+            const botao =
+                document.getElementById(
+                    "salvar"
+                );
+
+            botao.disabled = true;
+            botao.textContent = "Salvando...";
+
+            try {
+                const resposta = await fetch(
+                    `/api/cameras/${cameraSelecionada.id}`,
+                    {
+                        method: "PATCH",
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
+                        body: JSON.stringify(
+                            obterDadosFormulario()
+                        )
+                    }
+                );
+
+                const resultado =
+                    await resposta.json();
+
+                if (!resposta.ok) {
+                    throw new Error(
+                        resultado.detail ||
+                        "Erro ao salvar"
+                    );
+                }
+
+                cameraSelecionada = resultado;
+
+                mostrarMensagem(
+                    "Alterações salvas com sucesso.",
+                    true
+                );
+
+                await carregarCameras(true);
+
+            } catch (erro) {
+                mostrarMensagem(
+                    erro.message,
+                    false
+                );
+
+            } finally {
+                botao.disabled = false;
+                botao.textContent =
+                    "Salvar alterações";
+            }
+        }
+    );
+
+    document.getElementById(
+        "excluir"
+    ).addEventListener(
+        "click",
+        async () => {
+            if (!cameraSelecionada) {
+                return;
+            }
+
+            const confirmacao = confirm(
+                `Excluir definitivamente a câmera "${cameraSelecionada.nome}"?\n\nEsta ação removerá o cadastro do banco.`
+            );
+
+            if (!confirmacao) {
+                return;
+            }
+
+            try {
+                const resposta = await fetch(
+                    `/api/cameras/${cameraSelecionada.id}`,
+                    {
+                        method: "DELETE"
+                    }
+                );
+
+                const resultado =
+                    await resposta.json();
+
+                if (!resposta.ok) {
+                    throw new Error(
+                        resultado.detail ||
+                        "Erro ao excluir"
+                    );
+                }
+
+                cameraSelecionada = null;
+
+                document.getElementById(
+                    "conteudo-editor"
+                ).style.display = "none";
+
+                document.getElementById(
+                    "estado-vazio"
+                ).style.display = "grid";
+
+                await carregarCameras(false);
+
+                alert(
+                    `Câmera "${resultado.nome}" excluída.`
+                );
+
+            } catch (erro) {
+                alert(erro.message);
+            }
+        }
+    );
+
+    carregarCameras(false);
+</script>
+</body>
+</html>

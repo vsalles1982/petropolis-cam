@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Petrópolis Cam</title>
+
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
+    >
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --fundo: #0b1118;
+            --painel: #0f1822;
+            --cartao: #172432;
+            --borda: #263747;
+            --texto: #e8eef5;
+            --texto-fraco: #91a5b7;
+            --azul: #1598eb;
+            --verde: #67e59a;
+            --vermelho: #ff6b75;
+            --externa: #59bfff;
+            --roxo: #b487ff;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: var(--fundo);
+            color: var(--texto);
+            font-family: Arial, sans-serif;
+        }
+
+        header {
+            min-height: 72px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            padding: 12px 22px;
+            background: #111b26;
+            border-bottom: 1px solid var(--borda);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 22px;
+        }
+
+        header p {
+            margin: 5px 0 0;
+            color: var(--texto-fraco);
+            font-size: 13px;
+        }
+
+        .cabecalho-acoes {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-api {
+            color: var(--verde);
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .botao-cabecalho {
+            padding: 9px 12px;
+            color: #e0effb;
+            background: #1c3447;
+            border: 1px solid #31536c;
+            border-radius: 8px;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .botao-cabecalho:hover {
+            background: #264a64;
+        }
+
+        main {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            height: calc(100vh - 72px);
+        }
+
+        aside {
+            display: flex;
+            min-height: 0;
+            flex-direction: column;
+            background: var(--painel);
+            border-right: 1px solid var(--borda);
+        }
+
+        .controles {
+            padding: 15px;
+            border-bottom: 1px solid var(--borda);
+        }
+
+        .abas {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 7px;
+            margin-bottom: 12px;
+        }
+
+        .aba {
+            padding: 9px 5px;
+            color: #aabac8;
+            background: #162331;
+            border: 1px solid #293c4c;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .aba:hover {
+            border-color: var(--azul);
+        }
+
+        .aba.ativa {
+            color: white;
+            background: #087fd1;
+            border-color: #1598eb;
+        }
+
+        .busca {
+            position: relative;
+            margin-bottom: 10px;
+        }
+
+        .busca span {
+            position: absolute;
+            top: 11px;
+            left: 12px;
+            pointer-events: none;
+        }
+
+        .busca input {
+            width: 100%;
+            padding: 11px 12px 11px 38px;
+            color: var(--texto);
+            background: var(--cartao);
+            border: 1px solid #304354;
+            border-radius: 9px;
+            outline: none;
+        }
+
+        .busca input:focus {
+            border-color: var(--azul);
+        }
+
+        .filtros {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        select {
+            width: 100%;
+            padding: 9px 8px;
+            color: var(--texto);
+            background: var(--cartao);
+            border: 1px solid #304354;
+            border-radius: 8px;
+            outline: none;
+        }
+
+        .resumo {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .resumo div {
+            min-width: 0;
+            padding: 10px;
+            background: var(--cartao);
+            border-radius: 9px;
+        }
+
+        .resumo strong {
+            display: block;
+            font-size: 20px;
+        }
+
+        .resumo span {
+            color: var(--texto-fraco);
+            font-size: 11px;
+        }
+
+        .resultado-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 11px 16px;
+            color: var(--texto-fraco);
+            font-size: 12px;
+            border-bottom: 1px solid var(--borda);
+        }
+
+        .limpar {
+            padding: 0;
+            color: var(--externa);
+            background: none;
+            border: 0;
+            cursor: pointer;
+        }
+
+        #lista-cameras {
+            min-height: 0;
+            flex: 1;
+            padding: 13px;
+            overflow-y: auto;
+        }
+
+        .camera {
+            margin-bottom: 10px;
+            padding: 13px;
+            background: var(--cartao);
+            border: 1px solid var(--borda);
+            border-left: 4px solid #647789;
+            border-radius: 9px;
+            cursor: pointer;
+            transition: 0.18s;
+        }
+
+        .camera:hover {
+            border-color: var(--azul);
+            transform: translateY(-1px);
+        }
+
+        .camera.online-card {
+            border-left-color: var(--verde);
+        }
+
+        .camera.externa-card {
+            border-left-color: var(--externa);
+        }
+
+        .camera.incorporada-card {
+            border-left-color: var(--roxo);
+        }
+
+        .camera.offline-card {
+            border-left-color: var(--vermelho);
+        }
+
+        .camera h3 {
+            margin: 0 0 7px;
+            font-size: 14px;
+        }
+
+        .camera p {
+            margin: 4px 0;
+            color: #9cb0c1;
+            font-size: 12px;
+        }
+
+        .camera-rodape {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .selo {
+            padding: 4px 7px;
+            color: #8dc9ff;
+            background: #17344e;
+            border-radius: 6px;
+            font-size: 10px;
+        }
+
+        .assistivel {
+            color: var(--roxo);
+            font-size: 10px;
+        }
+
+        .online {
+            color: var(--verde) !important;
+        }
+
+        .offline {
+            color: var(--vermelho) !important;
+        }
+
+        .externa {
+            color: var(--externa) !important;
+        }
+
+        .incorporada {
+            color: var(--roxo) !important;
+        }
+
+        #mapa {
+            width: 100%;
+            height: 100%;
+        }
+
+        .popup-camera {
+            min-width: 230px;
+        }
+
+        .popup-camera h3 {
+            margin: 0 0 7px;
+        }
+
+        .popup-camera p {
+            margin: 5px 0;
+        }
+
+        .botao-popup {
+            display: block;
+            margin-top: 10px;
+            padding: 9px 11px;
+            color: white !important;
+            background: #087fd1;
+            border-radius: 6px;
+            text-align: center;
+            text-decoration: none;
+        }
+
+        .botao-popup.secundario {
+            background: #344a5d;
+        }
+
+        button.botao-popup {
+            width: 100%;
+            border: 0;
+            cursor: pointer;
+        }
+
+        .modal-player {
+            position: fixed;
+            inset: 0;
+            z-index: 3000;
+            display: grid;
+            place-items: center;
+            padding: 12px;
+            overflow: auto;
+            background: rgba(3, 7, 11, 0.84);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-player[hidden] {
+            display: none;
+        }
+
+        .modal-conteudo {
+            width: min(1120px, 96vw, 140vh);
+            max-height: calc(100vh - 24px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: #0f1822;
+            border: 1px solid #385267;
+            border-radius: 13px;
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.65);
+        }
+
+        .modal-topo {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 13px 15px;
+            border-bottom: 1px solid var(--borda);
+        }
+
+        .modal-topo h2 {
+            margin: 0 0 4px;
+            font-size: 18px;
+        }
+
+        .modal-topo p {
+            margin: 0;
+            color: var(--texto-fraco);
+            font-size: 12px;
+        }
+
+        .fechar-modal {
+            width: 38px;
+            height: 38px;
+            flex: 0 0 38px;
+            color: white;
+            background: #243847;
+            border: 1px solid #3a566b;
+            border-radius: 8px;
+            font-size: 21px;
+            cursor: pointer;
+        }
+
+        .fechar-modal:hover {
+            background: #a62c38;
+        }
+
+        .modal-video {
+            position: relative;
+            display: grid;
+            min-height: 0;
+            max-height: calc(100vh - 145px);
+            flex: 1 1 auto;
+            place-items: center;
+            width: 100%;
+            color: var(--texto-fraco);
+            background: #030609;
+            aspect-ratio: 16 / 9;
+        }
+
+        .modal-video iframe,
+        .modal-video video,
+        .modal-video img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            border: 0;
+            object-fit: contain;
+        }
+
+        .modal-rodape {
+            display: flex;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 11px 15px;
+            color: var(--texto-fraco);
+            font-size: 12px;
+        }
+
+        .modal-fonte {
+            color: #e0effb;
+            text-decoration: none;
+        }
+
+        .modal-fonte:hover {
+            color: var(--externa);
+        }
+
+        .vazio {
+            padding: 30px 15px;
+            color: var(--texto-fraco);
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .marker-cluster-small,
+        .marker-cluster-medium,
+        .marker-cluster-large {
+            background-color: rgba(21, 152, 235, 0.28);
+        }
+
+        .marker-cluster-small div,
+        .marker-cluster-medium div,
+        .marker-cluster-large div {
+            color: white;
+            background-color: #087fd1;
+        }
+
+        @media (max-width: 850px) {
+            body {
+                overflow: auto;
+            }
+
+            header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .cabecalho-acoes {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            main {
+                grid-template-columns: 1fr;
+                grid-template-rows: 520px 600px;
+                height: auto;
+            }
+
+            aside {
+                border-right: 0;
+                border-bottom: 1px solid var(--borda);
+            }
+        }
+    </style>
+</head>
+
+<body>
+<header>
+    <div>
+        <h1>🏔️ Petrópolis Cam</h1>
+
+        <p>
+            Câmeras públicas, oficiais e transmissões autorizadas
+        </p>
+    </div>
+
+    <div class="cabecalho-acoes">
+        <div class="status-api" id="status-api">
+            ● conectando...
+        </div>
+
+        <a
+            class="botao-cabecalho"
+            href="/admin.html"
+        >
+            ⚙️ Administração
+        </a>
+
+        <a
+            class="botao-cabecalho"
+            href="/importar.html"
+        >
+            ＋ Importar câmera
+        </a>
+    </div>
+</header>
+
+<main>
+    <aside>
+        <section class="controles">
+            <div class="abas">
+                <button
+                    class="aba ativa"
+                    data-regiao="petropolis"
+                >
+                    Petrópolis
+                </button>
+
+                <button
+                    class="aba"
+                    data-regiao="brasil"
+                >
+                    Brasil
+                </button>
+
+                <button
+                    class="aba"
+                    data-regiao="mundo"
+                >
+                    Mundo
+                </button>
+            </div>
+
+            <div class="busca">
+                <span>⌕</span>
+
+                <input
+                    id="campo-busca"
+                    type="search"
+                    placeholder="Buscar câmera, cidade ou bairro..."
+                    autocomplete="off"
+                >
+            </div>
+
+            <div class="filtros">
+                <select id="filtro-categoria">
+                    <option value="">
+                        Todas as categorias
+                    </option>
+                </select>
+
+                <select id="filtro-status">
+                    <option value="">
+                        Todos os estados
+                    </option>
+
+                    <option value="assistivel">
+                        Assistir aqui
+                    </option>
+
+                    <option value="online">
+                        Online
+                    </option>
+
+                    <option value="externa">
+                        Fonte externa
+                    </option>
+
+                    <option value="offline">
+                        Offline
+                    </option>
+                </select>
+            </div>
+
+            <div class="resumo">
+                <div>
+                    <strong id="total">0</strong>
+                    <span>Encontradas</span>
+                </div>
+
+                <div>
+                    <strong id="online">0</strong>
+                    <span>Online</span>
+                </div>
+
+                <div>
+                    <strong id="assistiveis">0</strong>
+                    <span>Assistíveis</span>
+                </div>
+            </div>
+        </section>
+
+        <div class="resultado-info">
+            <span id="texto-resultado">
+                Carregando...
+            </span>
+
+            <button class="limpar" id="limpar">
+                Limpar filtros
+            </button>
+        </div>
+
+        <div id="lista-cameras">
+            Carregando câmeras...
+        </div>
+    </aside>
+
+    <section id="mapa"></section>
+</main>
+
+<div
+    class="modal-player"
+    id="modal-player"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modal-titulo"
+    hidden
+>
+    <div class="modal-conteudo">
+        <div class="modal-topo">
+            <div>
+                <h2 id="modal-titulo">Câmera</h2>
+                <p id="modal-localizacao"></p>
+            </div>
+
+            <button
+                class="fechar-modal"
+                id="fechar-modal"
+                type="button"
+                aria-label="Fechar transmissão"
+            >
+                ×
+            </button>
+        </div>
+
+        <div class="modal-video" id="modal-video">
+            Preparando transmissão...
+        </div>
+
+        <div class="modal-rodape">
+            <span id="modal-detalhes"></span>
+
+            <a
+                class="modal-fonte"
+                id="modal-fonte"
+                href="#"
+                target="_blank"
+                rel="noopener noreferrer"
+                hidden
+            >
+                Abrir fonte original ↗
+            </a>
+        </div>
+    </div>
+</div>
+
+<script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+></script>
+
+<script
+    src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"
+></script>
+
+<script>
+    const mapa = L.map("mapa", {
+        zoomControl: true
+    }).setView(
+        [-22.5112, -43.1779],
+        12
+    );
+
+    L.tileLayer(
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+            maxZoom: 19,
+            attribution: "&copy; OpenStreetMap"
+        }
+    ).addTo(mapa);
+
+    const grupoMarcadores = L.markerClusterGroup({
+        showCoverageOnHover: false,
+        spiderfyOnMaxZoom: true,
+        maxClusterRadius: 45
+    });
+
+    mapa.addLayer(grupoMarcadores);
+
+    let todasCameras = [];
+    let regiaoAtual = "petropolis";
+    let primeiraCarga = true;
+
+    const modalPlayer = document.getElementById(
+        "modal-player"
+    );
+
+    const modalVideo = document.getElementById(
+        "modal-video"
+    );
+
+    function obterYoutubeId(camera) {
+        if (camera.video_id) {
+            return camera.video_id;
+        }
+
+        const enderecos = [
+            camera.stream_url,
+            camera.pagina_oficial
+        ];
+
+        const padroes = [
+            /youtube\.com\/embed\/([^?&/]+)/,
+            /youtube\.com\/watch\?v=([^?&/]+)/,
+            /youtube\.com\/live\/([^?&/]+)/,
+            /youtu\.be\/([^?&/]+)/
+        ];
+
+        for (const endereco of enderecos) {
+            if (!endereco) {
+                continue;
+            }
+
+            for (const padrao of padroes) {
+                const resultado = endereco.match(padrao);
+
+                if (resultado) {
+                    return resultado[1];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    function fecharPlayerModal() {
+        modalPlayer.hidden = true;
+        modalVideo.replaceChildren(
+            "Transmissão encerrada."
+        );
+
+        setTimeout(
+            () => mapa.invalidateSize(),
+            50
+        );
+    }
+
+    function abrirPlayerModal(cameraId) {
+        const camera = todasCameras.find(
+            item => item.id === cameraId
+        );
+
+        if (!camera) {
+            return;
+        }
+
+        document.getElementById(
+            "modal-titulo"
+        ).textContent = camera.nome;
+
+        document.getElementById(
+            "modal-localizacao"
+        ).textContent = [
+            camera.bairro,
+            camera.cidade,
+            camera.pais
+        ].filter(Boolean).join(" — ");
+
+        document.getElementById(
+            "modal-detalhes"
+        ).textContent = [
+            camera.categoria,
+            camera.fonte
+        ].filter(Boolean).join(" · ");
+
+        const fonte = document.getElementById(
+            "modal-fonte"
+        );
+
+        if (camera.pagina_oficial) {
+            fonte.href = camera.pagina_oficial;
+            fonte.hidden = false;
+        } else {
+            fonte.hidden = true;
+        }
+
+        const youtubeId = obterYoutubeId(camera);
+
+        if (youtubeId) {
+            const iframe = document.createElement(
+                "iframe"
+            );
+
+            iframe.src = (
+                "https://www.youtube.com/embed/"
+                + encodeURIComponent(youtubeId)
+                + "?autoplay=1&mute=1&rel=0"
+            );
+
+            iframe.title = camera.nome;
+            iframe.allow = (
+                "accelerometer; autoplay; clipboard-write; "
+                + "encrypted-media; gyroscope; "
+                + "picture-in-picture; web-share"
+            );
+            iframe.allowFullscreen = true;
+
+            modalVideo.replaceChildren(iframe);
+
+        } else if (
+            camera.stream_url
+            && (
+                camera.tipo_stream === "iframe"
+                || camera.tipo_stream === "webrtc"
+            )
+        ) {
+            const iframe = document.createElement(
+                "iframe"
+            );
+
+            iframe.src = camera.stream_url;
+            iframe.title = camera.nome;
+            iframe.allow = "autoplay; fullscreen";
+            iframe.allowFullscreen = true;
+
+            modalVideo.replaceChildren(iframe);
+
+        } else {
+            modalVideo.replaceChildren(
+                "Esta fonte só pode ser aberta na página original."
+            );
+        }
+
+        modalPlayer.hidden = false;
+
+        document.getElementById(
+            "fechar-modal"
+        ).focus();
+    }
+
+    function normalizar(texto) {
+        return String(texto || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .trim();
+    }
+
+    function estaNoBrasil(camera) {
+        return (
+            camera.latitude >= -34 &&
+            camera.latitude <= 6 &&
+            camera.longitude >= -74 &&
+            camera.longitude <= -32
+        );
+    }
+
+    function estaEmPetropolis(camera) {
+        return normalizar(camera.cidade)
+            .includes("petropolis");
+    }
+
+    function youtubeIncorporavel(url) {
+        if (!url) {
+            return false;
+        }
+
+        const endereco = normalizar(url);
+
+        return (
+            endereco.includes("youtube.com/watch") ||
+            endereco.includes("youtube.com/live/") ||
+            endereco.includes("youtu.be/") ||
+            endereco.includes("youtube.com/embed/")
+        );
+    }
+
+    function podeAssistirAqui(camera) {
+        if (
+            camera.stream_url &&
+            camera.autorizada &&
+            camera.pode_retransmitir
+        ) {
+            return true;
+        }
+
+        if (
+            camera.tipo_stream === "iframe" &&
+            camera.stream_url
+        ) {
+            return true;
+        }
+
+        return youtubeIncorporavel(
+            camera.pagina_oficial
+        );
+    }
+
+    function obterStatus(camera) {
+        if (camera.online) {
+            return {
+                classe: "online",
+                classeCard: "online-card",
+                texto: "Online",
+                cor: "#28bd6f"
+            };
+        }
+
+        if (podeAssistirAqui(camera)) {
+            return {
+                classe: "incorporada",
+                classeCard: "incorporada-card",
+                texto: "Player incorporado",
+                cor: "#9a67ea"
+            };
+        }
+
+        if (
+            camera.tipo_stream === "pagina_oficial" ||
+            camera.pagina_oficial
+        ) {
+            return {
+                classe: "externa",
+                classeCard: "externa-card",
+                texto: "Fonte externa",
+                cor: "#249ad8"
+            };
+        }
+
+        return {
+            classe: "offline",
+            classeCard: "offline-card",
+            texto: "Offline",
+            cor: "#e44e5a"
+        };
+    }
+
+    function criarIcone(camera) {
+        const status = obterStatus(camera);
+
+        return L.divIcon({
+            className: "",
+            html: `
+                <div
+                    style="
+                        width: 19px;
+                        height: 19px;
+                        background: ${status.cor};
+                        border: 3px solid white;
+                        border-radius: 50%;
+                        box-shadow:
+                            0 1px 8px rgba(0, 0, 0, 0.6);
+                    "
+                ></div>
+            `,
+            iconSize: [19, 19],
+            iconAnchor: [9, 9],
+            popupAnchor: [0, -12]
+        });
+    }
+
+    function criarPopup(camera) {
+        const status = obterStatus(camera);
+        let botoes = "";
+
+        if (podeAssistirAqui(camera)) {
+            botoes += `
+                <button
+                    class="botao-popup"
+                    type="button"
+                    data-abrir-player="${camera.id}"
+                >
+                    ▶ Assistir aqui
+                </button>
+            `;
+        }
+
+        if (camera.pagina_oficial) {
+            botoes += `
+                <a
+                    class="botao-popup secundario"
+                    href="${camera.pagina_oficial}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    Abrir fonte original
+                </a>
+            `;
+        }
+
+        return `
+            <div class="popup-camera">
+                <h3>${camera.nome}</h3>
+
+                <p>
+                    ${camera.bairro} — ${camera.cidade}
+                </p>
+
+                <p class="${status.classe}">
+                    ● ${status.texto}
+                </p>
+
+                <p>
+                    Categoria: ${camera.categoria}
+                </p>
+
+                <p>
+                    Fonte: ${camera.fonte}
+                </p>
+
+                ${botoes}
+            </div>
+        `;
+    }
+
+    function camerasDaRegiao(cameras) {
+        if (regiaoAtual === "petropolis") {
+            return cameras.filter(estaEmPetropolis);
+        }
+
+        if (regiaoAtual === "brasil") {
+            return cameras.filter(estaNoBrasil);
+        }
+
+        return cameras;
+    }
+
+    function obterCamerasFiltradas() {
+        const busca = normalizar(
+            document.getElementById(
+                "campo-busca"
+            ).value
+        );
+
+        const categoria =
+            document.getElementById(
+                "filtro-categoria"
+            ).value;
+
+        const filtroStatus =
+            document.getElementById(
+                "filtro-status"
+            ).value;
+
+        return camerasDaRegiao(todasCameras).filter(
+            camera => {
+                const texto = normalizar(
+                    [
+                        camera.nome,
+                        camera.cidade,
+                        camera.bairro,
+                        camera.categoria,
+                        camera.fonte
+                    ].join(" ")
+                );
+
+                if (
+                    busca &&
+                    !texto.includes(busca)
+                ) {
+                    return false;
+                }
+
+                if (
+                    categoria &&
+                    camera.categoria !== categoria
+                ) {
+                    return false;
+                }
+
+                const status = obterStatus(camera);
+
+                if (
+                    filtroStatus === "assistivel" &&
+                    !podeAssistirAqui(camera)
+                ) {
+                    return false;
+                }
+
+                if (
+                    filtroStatus === "online" &&
+                    !camera.online
+                ) {
+                    return false;
+                }
+
+                if (
+                    filtroStatus === "externa" &&
+                    status.classe !== "externa"
+                ) {
+                    return false;
+                }
+
+                if (
+                    filtroStatus === "offline" &&
+                    status.classe !== "offline"
+                ) {
+                    return false;
+                }
+
+                return true;
+            }
+        );
+    }
+
+    function atualizarCategorias() {
+        const seletor =
+            document.getElementById(
+                "filtro-categoria"
+            );
+
+        const valorAtual = seletor.value;
+
+        const categorias = [
+            ...new Set(
+                camerasDaRegiao(todasCameras)
+                    .map(camera => camera.categoria)
+                    .filter(Boolean)
+            )
+        ].sort((a, b) =>
+            a.localeCompare(
+                b,
+                "pt-BR"
+            )
+        );
+
+        seletor.innerHTML = `
+            <option value="">
+                Todas as categorias
+            </option>
+        `;
+
+        categorias.forEach(categoria => {
+            const opcao =
+                document.createElement("option");
+
+            opcao.value = categoria;
+            opcao.textContent = categoria;
+
+            seletor.appendChild(opcao);
+        });
+
+        if (categorias.includes(valorAtual)) {
+            seletor.value = valorAtual;
+        }
+    }
+
+    function ajustarMapa(cameras) {
+        if (cameras.length === 0) {
+            return;
+        }
+
+        if (
+            regiaoAtual === "petropolis" &&
+            !document.getElementById(
+                "campo-busca"
+            ).value &&
+            !document.getElementById(
+                "filtro-categoria"
+            ).value &&
+            !document.getElementById(
+                "filtro-status"
+            ).value
+        ) {
+            mapa.setView(
+                [-22.5112, -43.1779],
+                11
+            );
+
+            return;
+        }
+
+        const limites = L.latLngBounds(
+            cameras.map(camera => [
+                camera.latitude,
+                camera.longitude
+            ])
+        );
+
+        mapa.fitBounds(limites, {
+            padding: [45, 45],
+            maxZoom: 14
+        });
+    }
+
+    function renderizar() {
+        const cameras =
+            obterCamerasFiltradas();
+
+        const lista =
+            document.getElementById(
+                "lista-cameras"
+            );
+
+        grupoMarcadores.clearLayers();
+        lista.innerHTML = "";
+
+        const marcadores = [];
+
+        cameras.forEach(camera => {
+            const status = obterStatus(camera);
+
+            const marcador = L.marker(
+                [
+                    camera.latitude,
+                    camera.longitude
+                ],
+                {
+                    icon: criarIcone(camera)
+                }
+            );
+
+            marcador.bindPopup(
+                criarPopup(camera)
+            );
+
+            grupoMarcadores.addLayer(marcador);
+            marcadores.push(marcador);
+
+            const card =
+                document.createElement("article");
+
+            card.className =
+                `camera ${status.classeCard}`;
+
+            card.innerHTML = `
+                <h3>${camera.nome}</h3>
+
+                <p>
+                    ${camera.bairro} —
+                    ${camera.cidade}
+                </p>
+
+                <p class="${status.classe}">
+                    ● ${status.texto}
+                </p>
+
+                <div class="camera-rodape">
+                    <span class="selo">
+                        ${camera.categoria}
+                    </span>
+
+                    ${
+                        podeAssistirAqui(camera)
+                            ? `
+                                <span class="assistivel">
+                                    ▶ assistir
+                                </span>
+                            `
+                            : ""
+                    }
+                </div>
+            `;
+
+            card.onclick = () => {
+                mapa.setView(
+                    [
+                        camera.latitude,
+                        camera.longitude
+                    ],
+                    16
+                );
+
+                setTimeout(
+                    () => marcador.openPopup(),
+                    250
+                );
+            };
+
+            lista.appendChild(card);
+        });
+
+        if (cameras.length === 0) {
+            lista.innerHTML = `
+                <div class="vazio">
+                    Nenhuma câmera encontrada com
+                    os filtros selecionados.
+                </div>
+            `;
+        }
+
+        const online = cameras.filter(
+            camera => camera.online
+        ).length;
+
+        const assistiveis = cameras.filter(
+            podeAssistirAqui
+        ).length;
+
+        document.getElementById(
+            "total"
+        ).textContent = cameras.length;
+
+        document.getElementById(
+            "online"
+        ).textContent = online;
+
+        document.getElementById(
+            "assistiveis"
+        ).textContent = assistiveis;
+
+        document.getElementById(
+            "texto-resultado"
+        ).textContent =
+            `${cameras.length} câmera(s) exibida(s)`;
+
+        ajustarMapa(cameras);
+    }
+
+    function selecionarRegiao(regiao) {
+        regiaoAtual = regiao;
+
+        document
+            .querySelectorAll(".aba")
+            .forEach(botao => {
+                botao.classList.toggle(
+                    "ativa",
+                    botao.dataset.regiao === regiao
+                );
+            });
+
+        atualizarCategorias();
+        renderizar();
+    }
+
+    async function carregarCameras() {
+        const statusApi =
+            document.getElementById(
+                "status-api"
+            );
+
+        try {
+            const resposta = await fetch(
+                "/api/cameras",
+                {
+                    cache: "no-store"
+                }
+            );
+
+            if (!resposta.ok) {
+                throw new Error(
+                    "Falha ao consultar API"
+                );
+            }
+
+            todasCameras =
+                await resposta.json();
+
+            statusApi.textContent =
+                "● API conectada";
+
+            statusApi.style.color =
+                "#68e39b";
+
+            atualizarCategorias();
+            renderizar();
+
+            primeiraCarga = false;
+
+        } catch (erro) {
+            statusApi.textContent =
+                "● API desconectada";
+
+            statusApi.style.color =
+                "#ff6b75";
+
+            document.getElementById(
+                "lista-cameras"
+            ).innerHTML = `
+                <div class="vazio">
+                    ${erro.message}
+                </div>
+            `;
+        }
+    }
+
+    document
+        .querySelectorAll(".aba")
+        .forEach(botao => {
+            botao.addEventListener(
+                "click",
+                () => selecionarRegiao(
+                    botao.dataset.regiao
+                )
+            );
+        });
+
+    document
+        .getElementById("campo-busca")
+        .addEventListener(
+            "input",
+            renderizar
+        );
+
+    document
+        .getElementById("filtro-categoria")
+        .addEventListener(
+            "change",
+            renderizar
+        );
+
+    document
+        .getElementById("filtro-status")
+        .addEventListener(
+            "change",
+            renderizar
+        );
+
+    document
+        .getElementById("limpar")
+        .addEventListener(
+            "click",
+            () => {
+                document.getElementById(
+                    "campo-busca"
+                ).value = "";
+
+                document.getElementById(
+                    "filtro-categoria"
+                ).value = "";
+
+                document.getElementById(
+                    "filtro-status"
+                ).value = "";
+
+                renderizar();
+            }
+        );
+
+    document.addEventListener(
+        "click",
+        evento => {
+            const botao = evento.target.closest(
+                "[data-abrir-player]"
+            );
+
+            if (botao) {
+                abrirPlayerModal(
+                    Number(botao.dataset.abrirPlayer)
+                );
+            }
+        }
+    );
+
+    document.getElementById(
+        "fechar-modal"
+    ).addEventListener(
+        "click",
+        fecharPlayerModal
+    );
+
+    modalPlayer.addEventListener(
+        "click",
+        evento => {
+            if (evento.target === modalPlayer) {
+                fecharPlayerModal();
+            }
+        }
+    );
+
+    document.addEventListener(
+        "keydown",
+        evento => {
+            if (
+                evento.key === "Escape"
+                && !modalPlayer.hidden
+            ) {
+                fecharPlayerModal();
+            }
+        }
+    );
+
+    carregarCameras();
+
+    setInterval(
+        carregarCameras,
+        15000
+    );
+</script>
+</body>
+</html>

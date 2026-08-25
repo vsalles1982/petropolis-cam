@@ -1,0 +1,56 @@
+# Ambiente virtual
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Variáveis e credenciais
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.crt
+
+# Banco e dados locais
+data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Backups
+*.backup
+*.bak
+*.tar
+*.tar.gz
+*.zip
+backend/app.py.antes-*
+frontend/*.antes-*
+
+# Arquivos temporários
+*.tmp
+*.temp
+*.log
+.cache/
+.DS_Store
+Thumbs.db
+
+# Vídeos e mídia de teste
+*.mp4
+*.mkv
+*.webm
+*.mov
+
+# Editores
+.vscode/
+.idea/
+*.swp
+*.swo

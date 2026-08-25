@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Importar câmera — Petrópolis Cam</title>
+
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    >
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #0b1118;
+            color: #e8eef5;
+            font-family: Arial, sans-serif;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 70px;
+            padding: 14px 24px;
+            background: #111b26;
+            border-bottom: 1px solid #263544;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 21px;
+        }
+
+        header p {
+            margin: 5px 0 0;
+            color: #8fa6ba;
+            font-size: 13px;
+        }
+
+        .voltar {
+            padding: 9px 14px;
+            color: #d9e8f4;
+            background: #1b2b39;
+            border: 1px solid #304659;
+            border-radius: 8px;
+            text-decoration: none;
+        }
+
+        main {
+            display: grid;
+            grid-template-columns: 520px 1fr;
+            min-height: calc(100vh - 70px);
+        }
+
+        .painel {
+            padding: 22px;
+            overflow-y: auto;
+        }
+
+        .aviso {
+            margin-bottom: 18px;
+            padding: 13px;
+            color: #b9dfff;
+            background: #112a3d;
+            border: 1px solid #1f526f;
+            border-radius: 9px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        form {
+            display: grid;
+            gap: 14px;
+        }
+
+        .linha {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #aabac8;
+            font-size: 13px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 11px 12px;
+            color: #e8eef5;
+            background: #172432;
+            border: 1px solid #304354;
+            border-radius: 8px;
+            outline: none;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: #299ee8;
+        }
+
+        .checkbox {
+            display: flex;
+            gap: 9px;
+            align-items: flex-start;
+            padding: 12px;
+            background: #131f2a;
+            border: 1px solid #293b4a;
+            border-radius: 8px;
+        }
+
+        .checkbox input {
+            width: auto;
+            margin-top: 2px;
+        }
+
+        .checkbox label {
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        button {
+            padding: 12px;
+            color: white;
+            background: #087fd1;
+            border: 0;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1598eb;
+        }
+
+        button:disabled {
+            cursor: wait;
+            opacity: 0.6;
+        }
+
+        #mapa {
+            min-height: 600px;
+        }
+
+        #mensagem {
+            display: none;
+            padding: 12px;
+            border-radius: 8px;
+            line-height: 1.4;
+        }
+
+        .sucesso {
+            display: block !important;
+            color: #8ff0b8;
+            background: #123524;
+            border: 1px solid #286f49;
+        }
+
+        .erro {
+            display: block !important;
+            color: #ffabb2;
+            background: #3a171b;
+            border: 1px solid #753039;
+        }
+
+        .ajuda {
+            margin-top: 5px;
+            color: #758b9d;
+            font-size: 11px;
+        }
+
+        @media (max-width: 850px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+
+            #mapa {
+                min-height: 420px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<header>
+    <div>
+        <h1>📹 Importar câmera</h1>
+        <p>
+            Cadastro manual de fontes públicas ou autorizadas
+        </p>
+    </div>
+
+    <a
+        class="voltar"
+        href="/"
+    >
+        ← Voltar ao mapa
+    </a>
+</header>
+
+<main>
+    <section class="painel">
+        <div class="aviso">
+            Clique no mapa para preencher as coordenadas.
+            Cadastre somente câmeras oficiais, públicas ou
+            autorizadas pelo responsável. Não inclua painel
+            administrativo, senha, IP privado ou câmera
+            encontrada por varredura.
+        </div>
+
+        <form id="formulario">
+            <div>
+                <label for="nome">
+                    Nome da câmera *
+                </label>
+
+                <input
+                    id="nome"
+                    required
+                    placeholder="Ex.: Praça de Nogueira"
+                >
+            </div>
+
+            <div class="linha">
+                <div>
+                    <label for="cidade">
+                        Cidade *
+                    </label>
+
+                    <input
+                        id="cidade"
+                        required
+                        value="Petrópolis"
+                    >
+                </div>
+
+                <div>
+                    <label for="bairro">
+                        Bairro *
+                    </label>
+
+                    <input
+                        id="bairro"
+                        required
+                        placeholder="Ex.: Nogueira"
+                    >
+                </div>
+            </div>
+
+            <div>
+                <label for="categoria">
+                    Categoria *
+                </label>
+
+                <select id="categoria" required>
+                    <option value="trânsito">
+                        Trânsito
+                    </option>
+
+                    <option value="rio">
+                        Rio
+                    </option>
+
+                    <option value="chuva">
+                        Chuva
+                    </option>
+
+                    <option value="encosta">
+                        Encosta
+                    </option>
+
+                    <option value="turismo">
+                        Turismo
+                    </option>
+
+                    <option value="rodovia">
+                        Rodovia
+                    </option>
+
+                    <option value="monitoramento">
+                        Monitoramento
+                    </option>
+
+                    <option value="comunitária">
+                        Comunitária autorizada
+                    </option>
+                </select>
+            </div>
+
+            <div class="linha">
+                <div>
+                    <label for="latitude">
+                        Latitude *
+                    </label>
+
+                    <input
+                        id="latitude"
+                        type="number"
+                        step="any"
+                        required
+                    >
+                </div>
+
+                <div>
+                    <label for="longitude">
+                        Longitude *
+                    </label>
+
+                    <input
+                        id="longitude"
+                        type="number"
+                        step="any"
+                        required
+                    >
+                </div>
+            </div>
+
+            <div>
+                <label for="fonte">
+                    Responsável/fonte *
+                </label>
+
+                <input
+                    id="fonte"
+                    required
+                    placeholder="Ex.: Prefeitura, comércio ou proprietário"
+                >
+            </div>
+
+            <div>
+                <label for="pagina_oficial">
+                    Página pública da fonte
+                </label>
+
+                <input
+                    id="pagina_oficial"
+                    type="url"
+                    placeholder="https://..."
+                >
+
+                <div class="ajuda">
+                    Página institucional ou publicação que
+                    comprova a disponibilização.
+                </div>
+            </div>
+
+            <div>
+                <label for="stream_url">
+                    URL pública da transmissão
+                </label>
+
+                <input
+                    id="stream_url"
+                    type="url"
+                    placeholder="https://..."
+                >
+
+                <div class="ajuda">
+                    Não coloque endereço de administração,
+                    credenciais ou URL obtida sem autorização.
+                </div>
+            </div>
+
+            <div>
+                <label for="tipo_stream">
+                    Tipo de fonte
+                </label>
+
+                <select id="tipo_stream">
+                    <option value="pagina_oficial">
+                        Página oficial externa
+                    </option>
+
+                    <option value="webrtc">
+                        WebRTC autorizado
+                    </option>
+
+                    <option value="hls">
+                        HLS autorizado
+                    </option>
+
+                    <option value="rtsp">
+                        RTSP autorizado
+                    </option>
+
+                    <option value="imagem">
+                        Imagem pública atualizada
+                    </option>
+
+                    <option value="iframe">
+                        Página incorporável
+                    </option>
+                </select>
+            </div>
+
+            <div class="checkbox">
+                <input
+                    id="autorizada"
+                    type="checkbox"
+                    required
+                >
+
+                <label for="autorizada">
+                    Confirmo que esta câmera foi publicada
+                    oficialmente ou que possuo autorização do
+                    responsável para cadastrá-la. *
+                </label>
+            </div>
+
+            <div class="checkbox">
+                <input
+                    id="pode_retransmitir"
+                    type="checkbox"
+                >
+
+                <label for="pode_retransmitir">
+                    O responsável também autorizou expressamente
+                    a retransmissão pelo MediaMTX.
+                </label>
+            </div>
+
+            <div id="mensagem"></div>
+
+            <button id="botao" type="submit">
+                Cadastrar câmera
+            </button>
+        </form>
+    </section>
+
+    <section id="mapa"></section>
+</main>
+
+<script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+></script>
+
+<script>
+    const mapa = L.map("mapa").setView(
+        [-22.5112, -43.1779],
+        13
+    );
+
+    L.tileLayer(
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+            maxZoom: 19,
+            attribution: "&copy; OpenStreetMap"
+        }
+    ).addTo(mapa);
+
+    let marcador = null;
+
+    mapa.on("click", evento => {
+        const latitude = evento.latlng.lat;
+        const longitude = evento.latlng.lng;
+
+        document.getElementById("latitude").value =
+            latitude.toFixed(7);
+
+        document.getElementById("longitude").value =
+            longitude.toFixed(7);
+
+        if (marcador) {
+            marcador.setLatLng(evento.latlng);
+        } else {
+            marcador = L.marker(
+                evento.latlng,
+                {
+                    draggable: true
+                }
+            ).addTo(mapa);
+
+            marcador.on("dragend", () => {
+                const posicao = marcador.getLatLng();
+
+                document.getElementById("latitude").value =
+                    posicao.lat.toFixed(7);
+
+                document.getElementById("longitude").value =
+                    posicao.lng.toFixed(7);
+            });
+        }
+    });
+
+    function criarSlug(texto) {
+        return texto
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-|-$/g, "")
+            + "-"
+            + Date.now().toString().slice(-6);
+    }
+
+    function mostrarMensagem(texto, tipo) {
+        const mensagem =
+            document.getElementById("mensagem");
+
+        mensagem.className = tipo;
+        mensagem.textContent = texto;
+    }
+
+    document
+        .getElementById("formulario")
+        .addEventListener(
+            "submit",
+            async evento => {
+                evento.preventDefault();
+
+                const botao =
+                    document.getElementById("botao");
+
+                const autorizada =
+                    document.getElementById(
+                        "autorizada"
+                    ).checked;
+
+                const podeRetransmitir =
+                    document.getElementById(
+                        "pode_retransmitir"
+                    ).checked;
+
+                const paginaOficial =
+                    document.getElementById(
+                        "pagina_oficial"
+                    ).value.trim();
+
+                const streamUrl =
+                    document.getElementById(
+                        "stream_url"
+                    ).value.trim();
+
+                if (!autorizada) {
+                    mostrarMensagem(
+                        "Confirme a autorização da fonte.",
+                        "erro"
+                    );
+
+                    return;
+                }
+
+                if (!paginaOficial && !streamUrl) {
+                    mostrarMensagem(
+                        "Informe uma página oficial ou uma URL pública de transmissão.",
+                        "erro"
+                    );
+
+                    return;
+                }
+
+                if (
+                    podeRetransmitir &&
+                    !streamUrl
+                ) {
+                    mostrarMensagem(
+                        "Para permitir retransmissão, informe a URL autorizada do stream.",
+                        "erro"
+                    );
+
+                    return;
+                }
+
+                const nome =
+                    document.getElementById(
+                        "nome"
+                    ).value.trim();
+
+                const dados = {
+                    slug: criarSlug(nome),
+                    nome: nome,
+                    cidade:
+                        document.getElementById(
+                            "cidade"
+                        ).value.trim(),
+                    bairro:
+                        document.getElementById(
+                            "bairro"
+                        ).value.trim(),
+                    latitude: Number(
+                        document.getElementById(
+                            "latitude"
+                        ).value
+                    ),
+                    longitude: Number(
+                        document.getElementById(
+                            "longitude"
+                        ).value
+                    ),
+                    categoria:
+                        document.getElementById(
+                            "categoria"
+                        ).value,
+                    fonte:
+                        document.getElementById(
+                            "fonte"
+                        ).value.trim(),
+                    pagina_oficial:
+                        paginaOficial || null,
+                    stream_url:
+                        streamUrl || null,
+                    tipo_stream:
+                        document.getElementById(
+                            "tipo_stream"
+                        ).value,
+                    autorizada: autorizada,
+                    pode_retransmitir:
+                        podeRetransmitir
+                };
+
+                botao.disabled = true;
+                botao.textContent = "Cadastrando...";
+
+                try {
+                    const resposta = await fetch(
+                        "/api/cameras",
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type":
+                                    "application/json"
+                            },
+                            body: JSON.stringify(dados)
+                        }
+                    );
+
+                    const resultado =
+                        await resposta.json();
+
+                    if (!resposta.ok) {
+                        throw new Error(
+                            resultado.detail ||
+                            "Não foi possível cadastrar"
+                        );
+                    }
+
+                    mostrarMensagem(
+                        `Câmera cadastrada com sucesso! ID ${resultado.id}.`,
+                        "sucesso"
+                    );
+
+                    setTimeout(() => {
+                        window.location.href = "/";
+                    }, 1600);
+
+                } catch (erro) {
+                    mostrarMensagem(
+                        erro.message,
+                        "erro"
+                    );
+
+                } finally {
+                    botao.disabled = false;
+                    botao.textContent =
+                        "Cadastrar câmera";
+                }
+            }
+        );
+</script>
+</body>
+</html>

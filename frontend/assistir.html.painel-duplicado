@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assistir câmera — Petrópolis Cam</title>
+    <style>
+        * { box-sizing: border-box; }
+        :root {
+            --fundo: #0b1118;
+            --painel: #0f1822;
+            --cartao: #172432;
+            --borda: #263747;
+            --texto: #e8eef5;
+            --fraco: #91a5b7;
+            --azul: #1598eb;
+            --verde: #67e59a;
+            --vermelho: #ff6b75;
+        }
+        body {
+            min-height: 100vh;
+            margin: 0;
+            background: var(--fundo);
+            color: var(--texto);
+            font-family: Arial, sans-serif;
+        }
+        header {
+            min-height: 72px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            padding: 12px 22px;
+            background: #111b26;
+            border-bottom: 1px solid var(--borda);
+        }
+        header h1 { margin: 0; font-size: 22px; }
+        header p {
+            margin: 5px 0 0;
+            color: var(--fraco);
+            font-size: 13px;
+        }
+        .cabecalho-acoes,
+        .acoes-player {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .status-api {
+            color: var(--verde);
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        .botao,
+        button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            padding: 10px 13px;
+            color: #e0effb;
+            background: #1c3447;
+            border: 1px solid #31536c;
+            border-radius: 8px;
+            font: inherit;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .botao:hover,
+        button:hover { background: #264a64; }
+        .primario {
+            background: #087fd1;
+            border-color: var(--azul);
+        }
+        .primario:hover { background: var(--azul); }
+        main {
+            width: min(1440px, 100%);
+            margin: 0 auto;
+            padding: 22px;
+        }
+        .topo-camera {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 16px;
+        }
+        .topo-camera h2 {
+            margin: 0 0 8px;
+            font-size: clamp(20px, 3vw, 29px);
+        }
+        .localizacao {
+            margin: 0;
+            color: var(--fraco);
+            line-height: 1.5;
+        }
+        .acoes-player {
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+        .player {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            background: #05080c;
+            border: 1px solid var(--borda);
+            border-radius: 12px;
+            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+            aspect-ratio: 16 / 9;
+        }
+        .player iframe,
+        .player video,
+        .player img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            border: 0;
+        }
+        .player video,
+        .player img { object-fit: contain; }
+        .estado-player {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            padding: 28px;
+            color: var(--fraco);
+            text-align: center;
+        }
+        .estado-player strong {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--texto);
+            font-size: 20px;
+        }
+        .estado-player p {
+            max-width: 620px;
+            margin: 0;
+            line-height: 1.55;
+        }
+        .detalhes {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 14px;
+        }
+        .detalhe {
+            min-width: 0;
+            padding: 13px 14px;
+            background: var(--cartao);
+            border: 1px solid var(--borda);
+            border-radius: 9px;
+        }
+        .detalhe span {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--fraco);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .detalhe strong {
+            display: block;
+            overflow: hidden;
+            font-size: 14px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .online { color: var(--verde); }
+        .offline { color: var(--vermelho); }
+        .mensagem-erro {
+            padding: 18px;
+            color: #ffabb2;
+            background: #3a171b;
+            border: 1px solid #753039;
+            border-radius: 10px;
+        }
+        [hidden] { display: none !important; }
+        @media (max-width: 850px) {
+            header,
+            .topo-camera {
+                align-items: stretch;
+                flex-direction: column;
+            }
+            .cabecalho-acoes,
+            .acoes-player { justify-content: flex-start; }
+            .detalhes { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 520px) {
+            main { padding: 14px; }
+            .status-api { display: none; }
+            .detalhes { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<header>
+    <div>
+        <h1>🏔️ Petrópolis Cam</h1>
+        <p>Monitoramento público e comunitário autorizado</p>
+    </div>
+    <div class="cabecalho-acoes">
+        <div class="status-api" id="status-api">● conectando...</div>
+        <a class="botao" href="/">← Voltar ao mapa</a>
+    </div>
+</header>
+<main>
+    <div id="mensagem-erro" hidden></div>
+    <section id="conteudo" hidden>
+        <div class="topo-camera">
+            <div>
+                <h2 id="nome-camera">Carregando câmera...</h2>
+                <p class="localizacao" id="localizacao"></p>
+            </div>
+            <div class="acoes-player">
+                <button id="tela-cheia" type="button">⛶ Tela cheia</button>
+                <a
+                    class="botao primario"
+                    id="fonte-original"
+                    href="#"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    hidden
+                >Abrir fonte original ↗</a>
+            </div>
+        </div>
+        <div class="player" id="player">
+            <div class="estado-player">
+                <div>
+                    <strong>Preparando transmissão</strong>
+                    <p>Aguarde alguns instantes.</p>
+                </div>
+            </div>
+        </div>
+        <div class="detalhes">
+            <div class="detalhe">
+                <span>Status</span>
+                <strong id="status-camera"></strong>
+            </div>
+            <div class="detalhe">
+                <span>Categoria</span>
+                <strong id="categoria"></strong>
+            </div>
+            <div class="detalhe">
+                <span>País / região</span>
+                <strong id="pais-regiao"></strong>
+            </div>
+            <div class="detalhe">
+                <span>Fonte</span>
+                <strong id="fonte"></strong>
+            </div>
+        </div>
+    </section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+<script>
+    const parametros = new URLSearchParams(window.location.search);
+    const cameraId = Number(parametros.get("id"));
+    const player = document.getElementById("player");
+    let hls = null;
+
+    function texto(valor, alternativa = "Não informado") {
+        const resultado = String(valor || "").trim();
+        return resultado || alternativa;
+    }
+
+    function obterYoutubeId(camera) {
+        if (camera.video_id) return camera.video_id;
+
+        const urls = [camera.stream_url, camera.pagina_oficial];
+        const padroes = [
+            /youtube\.com\/embed\/([^?&/]+)/,
+            /youtube\.com\/watch\?v=([^?&/]+)/,
+            /youtube\.com\/live\/([^?&/]+)/,
+            /youtu\.be\/([^?&/]+)/
+        ];
+
+        for (const endereco of urls) {
+            if (!endereco) continue;
+            for (const padrao of padroes) {
+                const resultado = endereco.match(padrao);
+                if (resultado) return resultado[1];
+            }
+        }
+        return null;
+    }
+
+    function criarIframe(endereco, titulo) {
+        const iframe = document.createElement("iframe");
+        iframe.src = endereco;
+        iframe.title = titulo;
+        iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+        iframe.allowFullscreen = true;
+        iframe.referrerPolicy = "strict-origin-when-cross-origin";
+        player.replaceChildren(iframe);
+    }
+
+    function criarVideo(endereco, usarHls) {
+        const video = document.createElement("video");
+        video.controls = true;
+        video.autoplay = true;
+        video.muted = true;
+        video.playsInline = true;
+        player.replaceChildren(video);
+
+        if (usarHls && window.Hls && Hls.isSupported()) {
+            hls = new Hls();
+            hls.loadSource(endereco);
+            hls.attachMedia(video);
+        } else {
+            video.src = endereco;
+        }
+    }
+
+    function mostrarIndisponivel(mensagem) {
+        const estado = document.createElement("div");
+        const caixa = document.createElement("div");
+        const titulo = document.createElement("strong");
+        const paragrafo = document.createElement("p");
+        estado.className = "estado-player";
+        titulo.textContent = "Transmissão externa";
+        paragrafo.textContent = mensagem;
+        caixa.append(titulo, paragrafo);
+        estado.appendChild(caixa);
+        player.replaceChildren(estado);
+    }
+
+    function montarPlayer(camera) {
+        const youtubeId = obterYoutubeId(camera);
+        if (youtubeId) {
+            criarIframe(
+                "https://www.youtube.com/embed/"
+                + encodeURIComponent(youtubeId)
+                + "?autoplay=1&mute=1&rel=0",
+                camera.nome
+            );
+            return;
+        }
+        if (camera.tipo_stream === "iframe" && camera.stream_url) {
+            criarIframe(camera.stream_url, camera.nome);
+            return;
+        }
+        if (camera.tipo_stream === "hls" && camera.stream_url) {
+            criarVideo(camera.stream_url, true);
+            return;
+        }
+        if (camera.tipo_stream === "webrtc" && camera.stream_url) {
+            criarIframe(camera.stream_url, camera.nome);
+            return;
+        }
+        if (camera.tipo_stream === "imagem" && camera.stream_url) {
+            const imagem = document.createElement("img");
+            imagem.src = camera.stream_url;
+            imagem.alt = camera.nome;
+            player.replaceChildren(imagem);
+            return;
+        }
+        mostrarIndisponivel(
+            "Esta fonte não permite reprodução interna. Use o botão para abrir a página original."
+        );
+    }
+
+    function preencherDados(camera) {
+        document.title = camera.nome + " — Petrópolis Cam";
+        document.getElementById("nome-camera").textContent = camera.nome;
+        document.getElementById("localizacao").textContent = [
+            camera.bairro,
+            camera.cidade,
+            camera.pais
+        ].filter(Boolean).join(" — ");
+
+        const status = document.getElementById("status-camera");
+        status.textContent = camera.online ? "● Online" : "● Offline ou externa";
+        status.className = camera.online ? "online" : "offline";
+        document.getElementById("categoria").textContent = texto(camera.categoria);
+        document.getElementById("pais-regiao").textContent = [
+            camera.pais,
+            camera.regiao
+        ].filter(Boolean).join(" — ") || "Não informado";
+        document.getElementById("fonte").textContent = texto(camera.fonte);
+
+        const fonteOriginal = document.getElementById("fonte-original");
+        if (camera.pagina_oficial) {
+            fonteOriginal.href = camera.pagina_oficial;
+            fonteOriginal.hidden = false;
+        }
+
+        document.getElementById("conteudo").hidden = false;
+        montarPlayer(camera);
+    }
+
+    function mostrarErro(mensagem) {
+        const elemento = document.getElementById("mensagem-erro");
+        elemento.className = "mensagem-erro";
+        elemento.textContent = mensagem;
+        elemento.hidden = false;
+    }
+
+    async function carregarCamera() {
+        if (!Number.isInteger(cameraId) || cameraId <= 0) {
+            mostrarErro("ID da câmera ausente ou inválido.");
+            return;
+        }
+
+        try {
+            const resposta = await fetch(`/api/cameras/${cameraId}`, {
+                cache: "no-store"
+            });
+            if (!resposta.ok) {
+                throw new Error(
+                    resposta.status === 404
+                        ? "Câmera não encontrada."
+                        : "Não foi possível carregar a câmera."
+                );
+            }
+            const camera = await resposta.json();
+            preencherDados(camera);
+            const statusApi = document.getElementById("status-api");
+            statusApi.textContent = "● API conectada";
+            statusApi.style.color = "#67e59a";
+        } catch (erro) {
+            mostrarErro(erro.message);
+            const statusApi = document.getElementById("status-api");
+            statusApi.textContent = "● API indisponível";
+            statusApi.style.color = "#ff6b75";
+        }
+    }
+
+    document.getElementById("tela-cheia").addEventListener("click", async () => {
+        try {
+            if (document.fullscreenElement) {
+                await document.exitFullscreen();
+            } else {
+                await player.requestFullscreen();
+            }
+        } catch (erro) {
+            console.error("Tela cheia indisponível:", erro);
+        }
+    });
+
+    window.addEventListener("beforeunload", () => {
+        if (hls) hls.destroy();
+    });
+
+    carregarCamera();
+</script>
+</body>
+</html>
