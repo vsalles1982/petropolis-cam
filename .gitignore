@@ -54,3 +54,10 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+
+# Petrópolis Cam — módulo local de visão
+vision-poc/.venv/
+vision-poc/models/*.onnx
+vision-poc/entrada/*
+vision-poc/saida/*

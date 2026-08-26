@@ -421,6 +421,69 @@
             background: #a62c38;
         }
 
+        .modal-modos {
+            display: flex;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 9px 15px;
+            background: #0b141d;
+            border-bottom: 1px solid var(--borda);
+        }
+
+        .modal-modos[hidden] {
+            display: none;
+        }
+
+        .modal-modos-opcoes {
+            display: inline-flex;
+            gap: 4px;
+            padding: 3px;
+            background: #071018;
+            border: 1px solid #294052;
+            border-radius: 9px;
+        }
+
+        .botao-modo {
+            padding: 8px 13px;
+            color: var(--texto-fraco);
+            background: transparent;
+            border: 0;
+            border-radius: 6px;
+            font: inherit;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .botao-modo:hover {
+            color: white;
+            background: #172735;
+        }
+
+        .botao-modo.ativo {
+            color: white;
+            background: #087fd1;
+            box-shadow: 0 2px 10px rgba(8, 127, 209, 0.3);
+        }
+
+        .botao-modo[data-modo="ia"].ativo {
+            color: #07110d;
+            background: #50d890;
+            box-shadow: 0 2px 12px rgba(80, 216, 144, 0.28);
+        }
+
+        .modal-modo-status {
+            color: var(--texto-fraco);
+            font-size: 11px;
+            text-align: right;
+        }
+
+        .modal-modo-status.ia {
+            color: #6fe5a5;
+        }
+
         .modal-video {
             position: relative;
             display: grid;
@@ -462,6 +525,23 @@
 
         .modal-fonte:hover {
             color: var(--externa);
+        }
+
+        @media (max-width: 680px) {
+            .modal-modos {
+                align-items: stretch;
+                flex-direction: column;
+                gap: 7px;
+            }
+
+            .modal-modos-opcoes {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .modal-modo-status {
+                text-align: left;
+            }
         }
 
         .vazio {
@@ -672,6 +752,39 @@
             </button>
         </div>
 
+        <div
+            class="modal-modos"
+            id="modal-modos"
+            aria-label="Modo de exibição"
+            hidden
+        >
+            <div class="modal-modos-opcoes" role="group">
+                <button
+                    class="botao-modo ativo"
+                    id="modo-normal"
+                    type="button"
+                    data-modo="normal"
+                    aria-pressed="true"
+                >
+                    Transmissão normal
+                </button>
+
+                <button
+                    class="botao-modo"
+                    id="modo-ia"
+                    type="button"
+                    data-modo="ia"
+                    aria-pressed="false"
+                >
+                    ✨ Monitoramento por IA
+                </button>
+            </div>
+
+            <span class="modal-modo-status" id="modal-modo-status">
+                IA desligada
+            </span>
+        </div>
+
         <div class="modal-video" id="modal-video">
             Preparando transmissão...
         </div>
@@ -737,6 +850,25 @@
         "modal-video"
     );
 
+    const modalModos = document.getElementById(
+        "modal-modos"
+    );
+
+    const botaoModoNormal = document.getElementById(
+        "modo-normal"
+    );
+
+    const botaoModoIa = document.getElementById(
+        "modo-ia"
+    );
+
+    const modalModoStatus = document.getElementById(
+        "modal-modo-status"
+    );
+
+    let cameraModalAtual = null;
+    let requisicaoModoIa = 0;
+
     function obterYoutubeId(camera) {
         if (camera.video_id) {
             return camera.video_id;
@@ -771,56 +903,50 @@
         return null;
     }
 
-    function fecharPlayerModal() {
-        modalPlayer.hidden = true;
-        modalVideo.replaceChildren(
-            "Transmissão encerrada."
-        );
+    function atualizarBotoesModo(modo) {
+        const iaAtiva = modo === "ia";
 
-        setTimeout(
-            () => mapa.invalidateSize(),
-            50
+        botaoModoNormal.classList.toggle(
+            "ativo",
+            !iaAtiva
+        );
+        botaoModoIa.classList.toggle(
+            "ativo",
+            iaAtiva
+        );
+        botaoModoNormal.setAttribute(
+            "aria-pressed",
+            String(!iaAtiva)
+        );
+        botaoModoIa.setAttribute(
+            "aria-pressed",
+            String(iaAtiva)
+        );
+        modalModoStatus.classList.toggle(
+            "ia",
+            iaAtiva
         );
     }
 
-    function abrirPlayerModal(cameraId) {
-        const camera = todasCameras.find(
-            item => item.id === cameraId
+    function configurarDisponibilidadeIa(camera) {
+        const disponivel = (
+            camera.vision_disponivel === true
         );
 
-        if (!camera) {
-            return;
+        modalModos.hidden = !disponivel;
+        botaoModoIa.disabled = !disponivel;
+
+        if (!disponivel) {
+            atualizarBotoesModo("normal");
+            modalModoStatus.textContent = "IA desligada";
         }
 
-        document.getElementById(
-            "modal-titulo"
-        ).textContent = camera.nome;
+        return disponivel;
+    }
 
-        document.getElementById(
-            "modal-localizacao"
-        ).textContent = [
-            camera.bairro,
-            camera.cidade,
-            camera.pais
-        ].filter(Boolean).join(" — ");
-
-        document.getElementById(
-            "modal-detalhes"
-        ).textContent = [
-            camera.categoria,
-            camera.fonte
-        ].filter(Boolean).join(" · ");
-
-        const fonte = document.getElementById(
-            "modal-fonte"
-        );
-
-        if (camera.pagina_oficial) {
-            fonte.href = camera.pagina_oficial;
-            fonte.hidden = false;
-        } else {
-            fonte.hidden = true;
-        }
+    function montarTransmissaoNormal(camera) {
+        atualizarBotoesModo("normal");
+        modalModoStatus.textContent = "IA desligada";
 
         const youtubeId = obterYoutubeId(camera);
 
@@ -868,6 +994,131 @@
                 "Esta fonte só pode ser aberta na página original."
             );
         }
+    }
+
+    async function ativarModoIa() {
+        if (
+            !cameraModalAtual
+            || !configurarDisponibilidadeIa(cameraModalAtual)
+        ) {
+            return;
+        }
+
+        const numeroRequisicao = ++requisicaoModoIa;
+        atualizarBotoesModo("ia");
+        modalModoStatus.textContent = "Carregando demonstração da IA…";
+        modalVideo.replaceChildren("Preparando vídeo analisado…");
+
+        try {
+            const resposta = await fetch("/api/vision/demo");
+
+            if (!resposta.ok) {
+                throw new Error("Serviço de visão indisponível");
+            }
+
+            const dados = await resposta.json();
+
+            if (
+                numeroRequisicao !== requisicaoModoIa
+                || !cameraModalAtual
+            ) {
+                return;
+            }
+
+            if (!dados.disponivel || !dados.video_url) {
+                throw new Error(
+                    "Execute primeiro a prova de conceito YOLOX."
+                );
+            }
+
+            const video = document.createElement("video");
+            video.src = dados.video_url;
+            video.controls = true;
+            video.autoplay = true;
+            video.muted = true;
+            video.loop = true;
+            video.playsInline = true;
+            video.title = dados.rotulo;
+
+            modalVideo.replaceChildren(video);
+            modalModoStatus.textContent = (
+                "IA ativa · demonstração local"
+            );
+
+        } catch (erro) {
+            if (numeroRequisicao !== requisicaoModoIa) {
+                return;
+            }
+
+            atualizarBotoesModo("normal");
+            modalModoStatus.textContent = "IA indisponível";
+            modalVideo.replaceChildren(
+                erro.message || "Não foi possível ativar a IA."
+            );
+        }
+    }
+
+    function fecharPlayerModal() {
+        requisicaoModoIa += 1;
+        cameraModalAtual = null;
+        modalModos.hidden = true;
+        atualizarBotoesModo("normal");
+        modalModoStatus.textContent = "IA desligada";
+        modalPlayer.hidden = true;
+        modalVideo.replaceChildren(
+            "Transmissão encerrada."
+        );
+
+        setTimeout(
+            () => mapa.invalidateSize(),
+            50
+        );
+    }
+
+    function abrirPlayerModal(cameraId) {
+        const camera = todasCameras.find(
+            item => item.id === cameraId
+        );
+
+        if (!camera) {
+            return;
+        }
+
+        requisicaoModoIa += 1;
+        cameraModalAtual = camera;
+        configurarDisponibilidadeIa(camera);
+
+        document.getElementById(
+            "modal-titulo"
+        ).textContent = camera.nome;
+
+        document.getElementById(
+            "modal-localizacao"
+        ).textContent = [
+            camera.bairro,
+            camera.cidade,
+            camera.pais
+        ].filter(Boolean).join(" — ");
+
+        document.getElementById(
+            "modal-detalhes"
+        ).textContent = [
+            camera.categoria,
+            camera.fonte
+        ].filter(Boolean).join(" · ");
+
+        const fonte = document.getElementById(
+            "modal-fonte"
+        );
+
+        if (camera.pagina_oficial) {
+            fonte.href = camera.pagina_oficial;
+            fonte.hidden = false;
+        } else {
+            fonte.hidden = true;
+        }
+
+        montarTransmissaoNormal(camera);
 
         modalPlayer.hidden = false;
 
@@ -1489,6 +1740,22 @@
     ).addEventListener(
         "click",
         fecharPlayerModal
+    );
+
+    botaoModoNormal.addEventListener(
+        "click",
+        () => {
+            requisicaoModoIa += 1;
+
+            if (cameraModalAtual) {
+                montarTransmissaoNormal(cameraModalAtual);
+            }
+        }
+    );
+
+    botaoModoIa.addEventListener(
+        "click",
+        ativarModoIa
     );
 
     modalPlayer.addEventListener(

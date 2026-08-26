@@ -32,6 +32,11 @@ from backend.geolatlong_api import (
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 DATABASE_FILE = PROJECT_DIR / "data" / "cameras.db"
 FRONTEND_DIR = PROJECT_DIR / "frontend"
+VISION_OUTPUT_DIR = PROJECT_DIR / "vision-poc" / "saida"
+VISION_DEMO_FILE = (
+    VISION_OUTPUT_DIR
+    / "china_detectado_completo.mp4"
+)
 
 MEDIAMTX_API = (
     "http://127.0.0.1:9997/v3/paths/list"
@@ -601,6 +606,35 @@ def atualizar_status(
     database.refresh(camera)
 
     return camera
+
+
+@app.get("/api/vision/demo")
+def obter_demonstracao_vision():
+    """Informa se o vídeo local da prova de conceito está disponível."""
+    disponivel = VISION_DEMO_FILE.is_file()
+
+    return {
+        "disponivel": disponivel,
+        "modo": "demonstracao",
+        "rotulo": "Demonstração local — china.mp4",
+        "video_url": (
+            "/vision-demo/china_detectado_completo.mp4"
+            if disponivel
+            else None
+        ),
+    }
+
+
+VISION_OUTPUT_DIR.mkdir(
+    parents=True,
+    exist_ok=True,
+)
+
+app.mount(
+    "/vision-demo",
+    StaticFiles(directory=VISION_OUTPUT_DIR),
+    name="vision-demo",
+)
 
 
 app.mount(
