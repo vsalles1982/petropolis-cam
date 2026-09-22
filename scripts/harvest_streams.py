@@ -18,7 +18,7 @@ CANDIDATE_STREAMS = [
         "tipo_stream": "hls",
         "latitude": -22.5044,
         "longitude": -43.1729,
-        "url_stream": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+        "stream_url": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
     },
     {
         "nome": "Times Square - Nova York",
@@ -30,7 +30,7 @@ CANDIDATE_STREAMS = [
         "tipo_stream": "hls",
         "latitude": 40.7580,
         "longitude": -73.9855,
-        "url_stream": "https://sample-videos.com/video123/hls/big-buck-bunny.m3u8"
+        "stream_url": "https://sample-videos.com/video123/hls/big-buck-bunny.m3u8"
     },
     {
         "nome": "Shibuya Crossing - Tóquio",
@@ -42,7 +42,7 @@ CANDIDATE_STREAMS = [
         "tipo_stream": "hls",
         "latitude": 35.6595,
         "longitude": 139.7004,
-        "url_stream": "https://cph-p2s-kclq.akamai.net/hls/live/2000341/test/master.m3u8"
+        "stream_url": "https://cph-p2s-kclq.akamai.net/hls/live/2000341/test/master.m3u8"
     }
 ]
 
@@ -94,7 +94,7 @@ def injetar_cameras_dinamico():
     for cam in CANDIDATE_STREAMS:
         print(f"Testando: {cam['nome']}...", end=" ")
         
-        is_active = validar_stream(cam['url_stream'])
+        is_active = validar_stream(cam['stream_url'])
         cam['status'] = 'ativo' if is_active else 'inativo'
         cam['slug'] = slugify(cam['nome'])
         
