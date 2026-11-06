@@ -62,3 +62,4 @@ vision-poc/models/*.onnx
 vision-poc/entrada/*
 vision-poc/saida/*
 .env
+*.bak-*
