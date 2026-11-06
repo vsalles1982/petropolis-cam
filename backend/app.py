@@ -637,6 +637,37 @@ app.mount(
 )
 
 
+# ==========================================
+# PROXY DE MÍDIA (TfL e outros)
+# ==========================================
+from fastapi import Request
+from fastapi.responses import StreamingResponse
+import httpx
+
+@app.get("/api/proxy")
+async def proxy_stream(url: str, request: Request):
+    headers = {"User-Agent": "Mozilla/5.0"}
+    if "range" in request.headers:
+        headers["Range"] = request.headers["range"]
+
+    async def stream_generator():
+        async with httpx.AsyncClient() as client:
+            async with client.stream("GET", url, headers=headers, follow_redirects=True, timeout=30.0) as response:
+                async for chunk in response.aiter_bytes():
+                    yield chunk
+
+    async with httpx.AsyncClient() as client:
+        head_resp = await client.head(url, headers=headers, follow_redirects=True)
+        response_headers = {}
+        if "content-length" in head_resp.headers:
+            response_headers["Content-Length"] = head_resp.headers["content-length"]
+        if "accept-ranges" in head_resp.headers:
+            response_headers["Accept-Ranges"] = head_resp.headers["accept-ranges"]
+
+    media_type = "video/mp4" if ".mp4" in url.lower() else "image/jpeg"
+    return StreamingResponse(stream_generator(), media_type=media_type, headers=response_headers)
+
+
 app.mount(
     "/",
     StaticFiles(
@@ -645,3 +676,4 @@ app.mount(
     ),
     name="frontend",
 )
+

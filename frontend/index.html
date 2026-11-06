@@ -951,6 +951,36 @@
         const youtubeId = obterYoutubeId(camera);
 
         if (youtubeId) {
+            const tipo = camera.tipo_stream || "";
+            if (tipo === "video" || tipo === "imagem") {
+                if (tipo === "video") {
+                    const video = document.createElement("video");
+                    video.src = camera.stream_url;
+                    video.controls = true;
+                    video.autoplay = true;
+                    video.muted = true;
+                    video.loop = true;
+                    video.playsInline = true;
+                    video.style.width = "100%";
+                    video.style.height = "100%";
+                    modalVideo.replaceChildren(video);
+                } else {
+                    const img = document.createElement("img");
+                    img.src = camera.stream_url;
+                    img.alt = camera.nome || "Câmera";
+                    img.style.width = "100%";
+                    img.style.height = "100%";
+                    img.style.objectFit = "cover";
+                    modalVideo.replaceChildren(img);
+                    // Recarrega a imagem a cada 10 segundos (se for snapshot)
+                    if (window._imgTimer) clearInterval(window._imgTimer);
+                    window._imgTimer = setInterval(() => {
+                        img.src = camera.stream_url + (camera.stream_url.includes("?") ? "&" : "?") + "_t=" + Date.now();
+                    }, 10000);
+                }
+                return;
+            }
+
             const iframe = document.createElement(
                 "iframe"
             );
@@ -970,6 +1000,55 @@
             iframe.allowFullscreen = true;
 
             modalVideo.replaceChildren(iframe);
+
+        } else if (
+            camera.stream_url
+            && camera.tipo_stream === "video"
+        ) {
+            const video = document.createElement("video");
+            video.controls = true; // Mantém os controles para o usuário poder ver
+            video.autoplay = true;
+            video.muted = true;
+            video.loop = true;
+            video.playsInline = true;
+            video.style.width = "100%";
+            video.style.height = "100%";
+            video.style.objectFit = "contain";
+            video.style.backgroundColor = "#000";
+            
+            // Função para atualizar o vídeo com um parâmetro de cache novo
+            function recarregarVideo() {
+                const sep = camera.stream_url.includes("?") ? "&" : "?";
+                video.src = camera.stream_url + sep + "_t=" + Date.now();
+                video.load();
+                video.play().catch(() => {}); // Ignora erro de autoplay
+            }
+            
+            recarregarVideo();
+            modalVideo.replaceChildren(video);
+            
+            // Atualiza o MP4 a cada 15 segundos (já que são clipes curtos)
+            if (window._videoTimer) clearInterval(window._videoTimer);
+            window._videoTimer = setInterval(recarregarVideo, 15000);
+
+        } else if (
+            camera.stream_url
+            && camera.tipo_stream === "imagem"
+        ) {
+            const img = document.createElement("img");
+            img.src = camera.stream_url;
+            img.alt = camera.nome || "Câmera";
+            img.style.width = "100%";
+            img.style.height = "100%";
+            img.style.objectFit = "contain";
+            modalVideo.replaceChildren(img);
+
+            // Recarrega o snapshot a cada 10s (caso seja uma imagem estática)
+            if (window._imgTimer) clearInterval(window._imgTimer);
+            window._imgTimer = setInterval(() => {
+                const sep = camera.stream_url.includes("?") ? "&" : "?";
+                img.src = camera.stream_url + sep + "_t=" + Date.now();
+            }, 10000);
 
         } else if (
             camera.stream_url
@@ -1174,7 +1253,7 @@
         }
 
         if (
-            camera.tipo_stream === "iframe" &&
+            (camera.tipo_stream === "iframe" || camera.tipo_stream === "video" || camera.tipo_stream === "imagem") &&
             camera.stream_url
         ) {
             return true;
