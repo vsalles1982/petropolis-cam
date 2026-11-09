@@ -591,6 +591,7 @@
             }
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
 
 <body>
@@ -1000,6 +1001,36 @@
             iframe.allowFullscreen = true;
 
             modalVideo.replaceChildren(iframe);
+
+        } else if (
+            camera.stream_url
+            && camera.tipo_stream === "hls"
+        ) {
+            const video = document.createElement("video");
+            video.controls = true;
+            video.autoplay = true;
+            video.muted = true;
+            video.playsInline = true;
+            video.style.width = "100%";
+            video.style.height = "100%";
+            video.style.objectFit = "contain";
+            video.style.backgroundColor = "#000";
+
+            if (Hls.isSupported()) {
+                const hls = new Hls();
+                hls.loadSource(camera.stream_url);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    video.play().catch(() => {});
+                });
+                modalVideo.replaceChildren(video);
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = camera.stream_url;
+                modalVideo.replaceChildren(video);
+                video.addEventListener('loadedmetadata', function() {
+                    video.play().catch(() => {});
+                });
+            }
 
         } else if (
             camera.stream_url
