@@ -592,6 +592,14 @@
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+    <style>
+        /* Estilo Troféu 🏆 para câmeras de foto (NYC DOT) */
+        .icone-foto {
+            filter: hue-rotate(140deg) saturate(300%) brightness(110%);
+        }
+    </style>
+
 </head>
 
 <body>
@@ -1344,7 +1352,7 @@
                     style="
                         width: 19px;
                         height: 19px;
-                        background: ${status.cor};
+                        background: ${camera.tipo_stream === "imagem" ? "#FFD700" : status.cor};
                         border: 3px solid white;
                         border-radius: 50%;
                         box-shadow:
@@ -1599,8 +1607,10 @@
         const marcadores = [];
 
         cameras.forEach(camera => {
+            const isFoto = camera.tipo_stream === "imagem";
             const status = obterStatus(camera);
 
+            
             const marcador = L.marker(
                 [
                     camera.latitude,
