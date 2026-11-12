@@ -668,6 +668,41 @@ async def proxy_stream(url: str, request: Request):
     return StreamingResponse(stream_generator(), media_type=media_type, headers=response_headers)
 
 
+
+# ==========================================
+# PROXY HLS (Para DER-SP e outros)
+# ==========================================
+from fastapi import Request
+from fastapi.responses import Response
+import httpx
+
+@app.get("/api/proxy/hls")
+async def proxy_hls(url: str):
+    headers = {"User-Agent": "Mozilla/5.0", "Referer": "http://200.144.30.103:8084/"}
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url, headers=headers, follow_redirects=True, timeout=15)
+            resp.raise_for_status()
+            conteudo = resp.text
+    except Exception as e:
+        return Response(content=f"Erro: {e}", status_code=502)
+
+    base_url = url.rsplit('/', 1)[0] + '/'
+    linhas_novas = []
+    for linha in conteudo.split('\n'):
+        linha = linha.strip()
+        if linha and not linha.startswith('#'):
+            url_absoluta = linha if linha.startswith('http') else f"{base_url}{linha}"
+            if '.m3u8' in url_absoluta:
+                linhas_novas.append(f"/api/proxy/hls?url={url_absoluta}")
+            else:
+                linhas_novas.append(f"/api/proxy?url={url_absoluta}")
+        else:
+            linhas_novas.append(linha)
+
+    return Response(content='\n'.join(linhas_novas), media_type="application/vnd.apple.mpegurl", headers={"Access-Control-Allow-Origin": "*"})
+
+
 app.mount(
     "/",
     StaticFiles(
