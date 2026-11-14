@@ -630,11 +630,6 @@ VISION_OUTPUT_DIR.mkdir(
     exist_ok=True,
 )
 
-app.mount(
-    "/vision-demo",
-    StaticFiles(directory=VISION_OUTPUT_DIR),
-    name="vision-demo",
-)
 
 
 # ==========================================
@@ -676,6 +671,127 @@ from fastapi import Request
 from fastapi.responses import Response
 import httpx
 
+
+# ==========================================
+from fastapi import Request
+from fastapi.responses import Response
+import httpx
+import re
+
+# ==========================================
+# EXTRATOR E PROXY DE STREAM UTIC (Corrigido)
+# ==========================================
+from fastapi import Request
+from fastapi.responses import Response
+import httpx
+import re
+
+@app.get("/api/utic/stream")
+async def utic_stream(cctvid: str):
+    url_player = f"https://www.utic.go.kr/jsp/map/cctvStream.jsp?cctvid={cctvid}"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Referer": "https://www.utic.go.kr/map/map.do",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8"
+    }
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url_player, headers=headers, follow_redirects=True, timeout=20)
+            html = resp.text
+    except Exception as e:
+        return Response(content=f"Erro ao acessar UTIC: {e}", status_code=502)
+
+    # A MÁGICA ACONTECE AQUI: Regex que captura TUDO até o fim da string (incluindo ?token=...)
+    match = re.search(r'(https?://[^"\s]+)', html)
+    
+    if not match:
+        return Response(content="Link não encontrado no HTML.", status_code=502)
+        
+    # O link pode ter pego um pedaço de script, então limpamos
+    m3u8_url = match.group(1).strip().rstrip("'").rstrip('"')
+    
+    # Se o link não terminar em m3u8 (por causa de um parâmetro depois), ainda tentamos
+    if ".m3u8" not in m3u8_url:
+        return Response(content=f"URL inválida: {m3u8_url}", status_code=502)
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp_m3u8 = await client.get(m3u8_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
+            resp_m3u8.raise_for_status()
+            conteudo = resp_m3u8.text
+    except Exception as e:
+        return Response(content=f"Erro ao baixar m3u8 ({m3u8_url}): {e}", status_code=502)
+
+    from urllib.parse import urljoin, quote
+    base_url = m3u8_url.rsplit('/', 1)[0] + '/'
+    linhas_novas = []
+    for linha in conteudo.split('\n'):
+        linha = linha.strip()
+        if linha and not linha.startswith('#'):
+            url_absoluta = urljoin(base_url, linha)
+            linhas_novas.append(f"/api/proxy?url={quote(url_absoluta, safe='')}")
+        else:
+            linhas_novas.append(linha)
+
+    return Response(
+        content='\n'.join(linhas_novas),
+        media_type="application/vnd.apple.mpegurl",
+        headers={"Access-Control-Allow-Origin": "*"}
+    )
+
+
+@app.get("/api/utic/stream")
+async def utic_stream(cctvid: str):
+    url_player = f"https://www.utic.go.kr/jsp/map/cctvStream.jsp?cctvid={cctvid}"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Referer": "https://www.utic.go.kr/map/map.do",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8"
+    }
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url_player, headers=headers, follow_redirects=True, timeout=20)
+            html = resp.text
+    except Exception as e:
+        return Response(content=f"Erro ao acessar UTIC: {e}", status_code=502)
+
+    match = re.search(r'(https?://[^"\s\']+\.m3u8[^"\s\']*)', html)
+    
+    if not match:
+        return Response(content="Link .m3u8 não encontrado no HTML.", status_code=502)
+        
+    m3u8_url = match.group(1)
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp_m3u8 = await client.get(m3u8_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
+            resp_m3u8.raise_for_status()
+            conteudo = resp_m3u8.text
+    except Exception as e:
+        return Response(content=f"Erro ao baixar m3u8: {e}", status_code=502)
+
+    from urllib.parse import urljoin, quote
+    base_url = m3u8_url.rsplit('/', 1)[0] + '/'
+    linhas_novas = []
+    for linha in conteudo.split('\n'):
+        linha = linha.strip()
+        if linha and not linha.startswith('#'):
+            url_absoluta = urljoin(base_url, linha)
+            linhas_novas.append(f"/api/proxy?url={quote(url_absoluta, safe='')}")
+        else:
+            linhas_novas.append(linha)
+
+    return Response(
+        content='\n'.join(linhas_novas),
+        media_type="application/vnd.apple.mpegurl",
+        headers={"Access-Control-Allow-Origin": "*"}
+    )
+
+
 @app.get("/api/proxy/hls")
 async def proxy_hls(url: str):
     headers = {"User-Agent": "Mozilla/5.0", "Referer": "http://200.144.30.103:8084/"}
@@ -703,12 +819,21 @@ async def proxy_hls(url: str):
     return Response(content='\n'.join(linhas_novas), media_type="application/vnd.apple.mpegurl", headers={"Access-Control-Allow-Origin": "*"})
 
 
+
+
+# ==========================================
+# MOUNTS (Vision Demo e Frontend)
+# ==========================================
+VISION_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
 app.mount(
-    "/",
-    StaticFiles(
-        directory=FRONTEND_DIR,
-        html=True,
-    ),
-    name="frontend",
+    "/vision-demo",
+    StaticFiles(directory=VISION_OUTPUT_DIR),
+    name="vision-demo",
 )
 
+app.mount(
+    "/",
+    StaticFiles(directory=FRONTEND_DIR, html=True),
+    name="frontend",
+)
