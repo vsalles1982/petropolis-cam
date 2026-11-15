@@ -953,7 +953,15 @@
         return disponivel;
     }
 
+    function destruirHlsAtivo() {
+        if (window._hlsAtivo) {
+            try { window._hlsAtivo.destroy(); } catch (e) {}
+            window._hlsAtivo = null;
+        }
+    }
+
     function montarTransmissaoNormal(camera) {
+        destruirHlsAtivo();
         atualizarBotoesModo("normal");
         modalModoStatus.textContent = "IA desligada";
 
@@ -1025,7 +1033,9 @@
             video.style.backgroundColor = "#000";
 
             if (Hls.isSupported()) {
+                destruirHlsAtivo();
                 const hls = new Hls();
+                window._hlsAtivo = hls;
                 hls.loadSource(camera.stream_url);
                 hls.attachMedia(video);
                 hls.on(Hls.Events.MANIFEST_PARSED, function() {
@@ -1187,6 +1197,7 @@
     }
 
     function fecharPlayerModal() {
+        destruirHlsAtivo();
         requisicaoModoIa += 1;
         cameraModalAtual = null;
         modalModos.hidden = true;

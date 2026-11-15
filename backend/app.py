@@ -863,6 +863,183 @@ async def proxy_mjpeg(url: str):
         headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache"}
     )
 
+
+import re as _re
+import time as _time
+from urllib.parse import urljoin as _urljoin, quote as _quote
+from fastapi import Response as _Response
+from curl_cffi import requests as _cffi_requests
+
+_EC_CACHE = {}
+
+
+import time as _mc_time
+import re as _mc_re
+from urllib.parse import urljoin as _mc_urljoin, quote as _mc_quote
+from curl_cffi import requests as _mc_req
+from fastapi import HTTPException as _mc_HTTP
+from fastapi.responses import Response as _mc_Resp
+
+_MC_SLASH = chr(47)
+_MC_BASE = "https:" + _MC_SLASH + _MC_SLASH + "maaxcam.com.br"
+_MC_FN = "fb4e84860f7bc65c17b932c658b18aa7050a6f470ce3fd23a5b0b9f05b160a4d"
+_MC_CACHE = {}
+
+def _mc_get_hls(slug: str) -> str:
+    now = _mc_time.time()
+    cached = _MC_CACHE.get(slug)
+    if cached and (now - cached[1]) < 300:
+        return cached[0]
+    hdr = {
+        "Accept": "application/json",
+        "x-tsr-serverFn": "true",
+        "Origin": _MC_BASE,
+        "Referer": _MC_BASE + "/camera/" + slug,
+    }
+    payload = {
+        "t": {
+            "t": 10,
+            "i": 0,
+            "p": {
+                "k": ["data"],
+                "v": [{
+                    "t": 10,
+                    "i": 1,
+                    "p": {"k": ["slug"], "v": [{"t": 1, "s": slug}]},
+                }],
+            },
+        },
+        "f": 63,
+        "m": [],
+    }
+    r = _mc_req.post(_MC_BASE + "/_serverFn/" + _MC_FN, json=payload, headers=hdr, impersonate="chrome", timeout=15)
+    m = _mc_re.search(r'"s":"(https?:[^"]+\.m3u8[^"]*)"', r.text)
+    if not m:
+        raise _mc_HTTP(status_code=502, detail="Maaxcam stream indisponivel")
+    hls_url = m.group(1).replace("\\/", "/")
+    _MC_CACHE[slug] = (hls_url, now)
+    return hls_url
+
+@app.get("/api/maaxcam/seg")
+def maaxcam_seg(url: str):
+    hdr = {"Referer": _MC_BASE + "/", "Origin": _MC_BASE}
+    r = _mc_req.get(url, headers=hdr, impersonate="chrome", timeout=15)
+    if r.status_code != 200:
+        raise _mc_HTTP(status_code=r.status_code, detail="Erro segmento Maaxcam")
+    ct = r.headers.get("content-type", "video/mp2t")
+    if "mpegurl" in ct.lower() or url.split("?")[0].endswith(".m3u8"):
+        lines = []
+        for line in r.text.splitlines():
+            s = line.strip()
+            if s and not s.startswith("#"):
+                abs_u = _mc_urljoin(url, s)
+                lines.append(f"/api/maaxcam/seg?url={_mc_quote(abs_u, safe='')}")
+            else:
+                lines.append(line)
+        return _mc_Resp(content="\n".join(lines), media_type="application/vnd.apple.mpegurl")
+    return _mc_Resp(content=r.content, media_type=ct)
+
+@app.get("/api/maaxcam/stream.m3u8")
+def maaxcam_master(slug: str):
+    hls_url = _mc_get_hls(slug)
+    hdr = {"Referer": _MC_BASE + "/", "Origin": _MC_BASE}
+    r = _mc_req.get(hls_url, headers=hdr, impersonate="chrome", timeout=15)
+    if r.status_code != 200:
+        _MC_CACHE.pop(slug, None)
+        hls_url = _mc_get_hls(slug)
+        r = _mc_req.get(hls_url, headers=hdr, impersonate="chrome", timeout=15)
+    if r.status_code != 200:
+        raise _mc_HTTP(status_code=r.status_code, detail="Erro playlist Maaxcam")
+    lines = []
+    for line in r.text.splitlines():
+        s = line.strip()
+        if s and not s.startswith("#"):
+            abs_u = _mc_urljoin(hls_url, s)
+            lines.append(f"/api/maaxcam/seg?url={_mc_quote(abs_u, safe='')}")
+        else:
+            lines.append(line)
+    return _mc_Resp(content="\n".join(lines), media_type="application/vnd.apple.mpegurl")
+
+@app.get("/api/earthcam/seg")
+async def earthcam_segment(url: str):
+    headers = {
+        "Referer": "https://earthcam.com",
+        "Origin": "https://earthcam.com",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    }
+    async with httpx.AsyncClient(verify=False, follow_redirects=True, timeout=15.0) as client:
+        r = await client.get(url, headers=headers)
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code, detail="Erro EarthCam seg")
+        ct = r.headers.get("content-type", "application/octet-stream")
+        if "mpegurl" in ct.lower() or url.split("?")[0].endswith(".m3u8"):
+            lines = []
+            for line in r.text.splitlines():
+                s = line.strip()
+                if s and not s.startswith("#"):
+                    abs_u = _urljoin(url, s)
+                    lines.append(f"/api/earthcam/seg?url={_quote(abs_u, safe='')}")
+                else:
+                    lines.append(line)
+            return _Response("\n".join(lines), media_type="application/vnd.apple.mpegurl", headers={"Access-Control-Allow-Origin": "*"})
+        return _Response(r.content, media_type=ct, headers={"Access-Control-Allow-Origin": "*"})
+
+@app.get("/api/earthcam/stream.m3u8")
+def earthcam_master(url: str):
+    now = _time.time()
+    cached = _EC_CACHE.get(url)
+    if cached and (now - cached[1]) < 900:
+        stream_url = cached[0]
+    else:
+        r = _cffi_requests.get(url, impersonate="chrome", timeout=15)
+        if r.status_code != 200:
+            raise HTTPException(status_code=502, detail="Falha ao ler pagina EarthCam")
+        m_cam = _re.search(r"[?&]cam=([a-zA-Z0-9_-]+)", url)
+        cam_key = m_cam.group(1) if m_cam else None
+        m_json = _re.search(r"json_base\s*=\s*(\{.*\});", r.text)
+        stream_url = None
+        if m_json:
+            import json as _json
+            try:
+                jb = _json.loads(m_json.group(1))
+                cams = jb.get("cam", {})
+                target = cams.get(cam_key) if (cam_key and cam_key in cams) else next(iter(cams.values()), {})
+                stream_url = (target.get("stream") or "").replace("\\/", "/")
+            except Exception:
+                pass
+        if not stream_url:
+            m_st = _re.search(r"\"stream\"\s*:\s*\"(https?:\\/\\/[^\"]+\.m3u8[^\"]*)\"", r.text)
+            if m_st:
+                stream_url = m_st.group(1).replace("\\/", "/")
+        if not stream_url:
+            raise HTTPException(status_code=404, detail="Stream EarthCam nao encontrado")
+        _EC_CACHE[url] = (stream_url, now)
+
+    headers = {
+        "Referer": "https://earthcam.com",
+        "Origin": "https://earthcam.com",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    }
+    resp = _cffi_requests.get(stream_url, headers=headers, impersonate="chrome", timeout=15)
+    if resp.status_code != 200:
+        _EC_CACHE.pop(url, None)
+        raise HTTPException(status_code=resp.status_code, detail="Playlist EarthCam indisponivel")
+
+    lines = []
+    for line in resp.text.splitlines():
+        s = line.strip()
+        if s and not s.startswith("#"):
+            abs_u = _urljoin(stream_url, s)
+            lines.append(f"/api/earthcam/seg?url={_quote(abs_u, safe='')}")
+        else:
+            lines.append(line)
+
+    return _Response(
+        "\n".join(lines),
+        media_type="application/vnd.apple.mpegurl",
+        headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache"}
+    )
+
 app.mount(
     "/vision-demo",
     StaticFiles(directory=VISION_OUTPUT_DIR),

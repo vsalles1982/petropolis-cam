@@ -14,6 +14,8 @@ USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 
 async def validar_camera(camera):
     cam_id, nome, url, tipo = camera
+    if url and url.startswith("/api/"):
+        url = "http://127.0.0.1:8000" + url
     try:
         # Cria um client para a requisição
         async with httpx.AsyncClient(verify=False, timeout=10.0) as client:
