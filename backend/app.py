@@ -826,6 +826,43 @@ async def proxy_hls(url: str):
 # ==========================================
 VISION_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+
+@app.get("/api/proxy/mjpeg")
+async def proxy_mjpeg(url: str):
+    import httpx
+    from fastapi import HTTPException
+    from fastapi.responses import StreamingResponse
+
+    parts = url.split("/")
+    referer = f"{parts}//{parts}/" if len(parts) > 2 else url
+    headers = {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+        "Referer": referer
+    }
+    client = httpx.AsyncClient(verify=False, follow_redirects=True, timeout=15.0)
+    req = client.build_request("GET", url, headers=headers)
+    resp = await client.send(req, stream=True)
+
+    if resp.status_code != 200:
+        await resp.aclose()
+        await client.aclose()
+        raise HTTPException(status_code=resp.status_code, detail="Erro no stream MJPEG")
+
+    async def iter_chunks():
+        try:
+            async for chunk in resp.aiter_bytes(chunk_size=8192):
+                yield chunk
+        finally:
+            await resp.aclose()
+            await client.aclose()
+
+    content_type = resp.headers.get("content-type", "multipart/x-mixed-replace")
+    return StreamingResponse(
+        iter_chunks(),
+        media_type=content_type,
+        headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache"}
+    )
+
 app.mount(
     "/vision-demo",
     StaticFiles(directory=VISION_OUTPUT_DIR),

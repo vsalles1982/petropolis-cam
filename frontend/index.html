@@ -1107,6 +1107,16 @@
 
             modalVideo.replaceChildren(iframe);
 
+        } else if (camera.tipo_stream === "mjpeg") {
+            const img = document.createElement("img");
+            img.src = `/api/proxy/mjpeg?url=${encodeURIComponent(camera.stream_url)}`;
+            img.alt = camera.nome;
+            img.style.width = "100%";
+            img.style.height = "100%";
+            img.style.objectFit = "contain";
+            img.style.background = "#000";
+            modalVideo.replaceChildren(img);
+
         } else {
             modalVideo.replaceChildren(
                 "Esta fonte só pode ser aberta na página original."
