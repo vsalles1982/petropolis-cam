@@ -1040,6 +1040,9 @@ def earthcam_master(url: str):
         headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache"}
     )
 
+from backend.clima_proxy import router as clima_router
+app.include_router(clima_router)
+
 app.mount(
     "/vision-demo",
     StaticFiles(directory=VISION_OUTPUT_DIR),

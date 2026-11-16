@@ -14,6 +14,13 @@ USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 
 async def validar_camera(camera):
     cam_id, nome, url, tipo = camera
+    
+    # PROTEÇÃO: Ignora URLs relativas (ex: /api/maaxcam/...) para não apagar por engano
+    if url.startswith('/api/') or url.startswith('/'):
+        return cam_id, True, "URL relativa (ignorada na auditoria)"
+    
+    try:
+    cam_id, nome, url, tipo = camera
     if url and url.startswith("/api/"):
         url = "http://127.0.0.1:8000" + url
     try:
