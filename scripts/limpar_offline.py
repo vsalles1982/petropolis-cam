@@ -15,14 +15,10 @@ USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 async def validar_camera(camera):
     cam_id, nome, url, tipo = camera
     
-    # PROTEÇÃO: Ignora URLs relativas (ex: /api/maaxcam/...) para não apagar por engano
+    # BLINDAGEM: Ignora URLs relativas (proxies locais) para não apagar por engano
     if url.startswith('/api/') or url.startswith('/'):
         return cam_id, True, "URL relativa (ignorada na auditoria)"
     
-    try:
-    cam_id, nome, url, tipo = camera
-    if url and url.startswith("/api/"):
-        url = "http://127.0.0.1:8000" + url
     try:
         # Cria um client para a requisição
         async with httpx.AsyncClient(verify=False, timeout=10.0) as client:
@@ -54,6 +50,7 @@ async def validar_camera(camera):
                     return cam_id, False, f"HTTP {resp.status_code}"
     except Exception as e:
         return cam_id, False, str(e)[:50]
+
 
 async def main():
     if not DB_PATH.exists():
