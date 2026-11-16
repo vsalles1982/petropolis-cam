@@ -1046,6 +1046,9 @@ app.include_router(clima_router)
 from backend.waves_proxy import router as waves_router
 app.include_router(waves_router)
 
+from backend.faa_proxy import router as faa_router
+app.include_router(faa_router)
+
 app.mount(
     "/vision-demo",
     StaticFiles(directory=VISION_OUTPUT_DIR),
