@@ -1049,6 +1049,9 @@ app.include_router(waves_router)
 from backend.faa_proxy import router as faa_router
 app.include_router(faa_router)
 
+from backend.surfline_proxy import router as surfline_router
+app.include_router(surfline_router)
+
 app.mount(
     "/vision-demo",
     StaticFiles(directory=VISION_OUTPUT_DIR),
