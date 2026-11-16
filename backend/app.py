@@ -1043,6 +1043,9 @@ def earthcam_master(url: str):
 from backend.clima_proxy import router as clima_router
 app.include_router(clima_router)
 
+from backend.waves_proxy import router as waves_router
+app.include_router(waves_router)
+
 app.mount(
     "/vision-demo",
     StaticFiles(directory=VISION_OUTPUT_DIR),
